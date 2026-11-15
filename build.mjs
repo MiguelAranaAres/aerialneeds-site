@@ -17,8 +17,8 @@ import path from "node:path";
 
 const cfg = JSON.parse(fs.readFileSync(new URL("./config.json", import.meta.url)));
 const SITE_URL = (process.env.SITE_URL || cfg.siteUrl).replace(/\/$/, "");
-const BASE = (process.env.BASE_PATH ?? cfg.basePath ?? "").replace(/\/$/, "");
-const PREVIEW = (process.env.PREVIEW ?? (cfg.preview ? "1" : "")) === "1";
+const BASE = (process.env.BASE_PATH || cfg.basePath || "").replace(/\/$/, "");
+const PREVIEW = process.env.PREVIEW ? process.env.PREVIEW === "1" : !!cfg.preview;
 const FALLBACK = (process.env.FALLBACK_ORIGIN || cfg.fallbackOrigin).replace(/\/$/, "");
 const OUT = path.resolve("dist");
 const API = `https://${cfg.shopDomain}/api/${cfg.apiVersion}/graphql.json`;
