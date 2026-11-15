@@ -4,8 +4,7 @@
   "storefrontToken": "83f8c43777b896c75361762aba9e9f1b",
   "siteUrl": "https://www.aerialneeds.com",
   "customDomain": "www.aerialneeds.com",
-  "basePath": "/aerialneeds-site",
-  "preview": true,
+  "preview": "auto",
   "fallbackOrigin": "https://www.aerialneeds.com",
   "email": "miguelarana@aerialneeds.com",
   "nav": [
@@ -74,5 +73,7 @@
       "title": "Aerial Needs | Equipo para aéreos, circo y fuego",
       "description": "Muñequeras, cintas, grips y protección para entrenar telas, straps y lira. Compra kits de entrenamiento y equipo de fuego en Aerial Needs."
     }
-  }
+  },
+  "previewBasePath": "/aerialneeds-site",
+  "checkoutOrigin": "https://shop.aerialneeds.com"
 }

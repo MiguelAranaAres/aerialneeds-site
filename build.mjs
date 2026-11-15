@@ -15,12 +15,32 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import dns from "node:dns/promises";
 
 const cfg = JSON.parse(fs.readFileSync(new URL("./config.json", import.meta.url)));
 const SITE_URL = (process.env.SITE_URL || cfg.siteUrl).replace(/\/$/, "");
-const BASE = (process.env.BASE_PATH || cfg.basePath || "").replace(/\/$/, "");
-const PREVIEW = process.env.PREVIEW ? process.env.PREVIEW === "1" : !!cfg.preview;
-const FALLBACK = (process.env.FALLBACK_ORIGIN || cfg.fallbackOrigin).replace(/\/$/, "");
+const GUIDES = JSON.parse(fs.readFileSync(new URL("./content/guides.json", import.meta.url)));
+// BASE / PREVIEW / FALLBACK are decided at build time by resolveMode():
+// with "preview": "auto" the site stays a hidden preview on github.io until www DNS points at GitHub Pages,
+// then the next build goes live on its own (indexable, root paths, fallback to the Shopify checkout domain).
+let BASE = "", PREVIEW = true, FALLBACK = "";
+async function resolveMode(offline) {
+  let live = false;
+  if (process.env.PREVIEW) live = process.env.PREVIEW !== "1";
+  else if (cfg.preview === "auto") {
+    if (!offline) try { live = (await dns.resolveCname(new URL(SITE_URL).hostname)).some((h) => h.endsWith("github.io")); } catch {}
+  } else live = !cfg.preview;
+  PREVIEW = !live;
+  BASE = (process.env.BASE_PATH || (live ? "" : cfg.previewBasePath) || "").replace(/\/$/, "");
+  let fb = process.env.FALLBACK_ORIGIN;
+  if (!fb) {
+    fb = cfg.fallbackOrigin;
+    if (live) {
+      try { await dns.resolve(new URL(cfg.checkoutOrigin).hostname); fb = cfg.checkoutOrigin; } catch { fb = `https://${cfg.shopDomain}`; }
+    }
+  }
+  FALLBACK = fb.replace(/\/$/, "");
+}
 const OUT = path.resolve("dist");
 const API = `https://${cfg.shopDomain}/api/${cfg.apiVersion}/graphql.json`;
 const BUILD_ID = Date.now().toString(36);
@@ -45,6 +65,25 @@ const T = {
     contactDesc: "Contact Aerial Needs about orders, sizing, coach codes and studio partnerships.",
     searchP: "Wrist wraps, tape, poi…", searchProducts: "Search products", searchDesc: "Search Aerial Needs products.",
     results: "result", resultsPl: "results", notFound: "Page not found", notFoundP: "Sorry, we couldn't find that page.",
+    announce: "Aerial gear ships for a flat $2.99 · Delivery in 9–14 days · 30-day returns",
+    fmAssure: ["American-made by Fire Mecca", "Shipping calculated at checkout", "30-day returns"],
+    faqH: "Shipping, returns & safety",
+    faq: [
+      ["How long does delivery take?", "Orders arrive in 9 to 14 days. We email you tracking details once your order ships.", 1],
+      ["How much is shipping and where do you ship?", "Aerial training gear ships for a flat $2.99 to the United States, Colombia and Venezuela.", 1],
+      ["Can I return it?", "Yes, within 30 days of delivery. US orders get a replacement; Colombia and Venezuela orders get store credit. The customer pays return shipping.", 0],
+      ["Is this safety equipment?", "No. Our accessories are not fall-protection systems. Always train with a qualified coach.", 1],
+    ],
+    coachCode: "Have a coach code? Enter it at checkout.",
+    sortBy: "Sort by", sorts: ["Featured", "Price: low to high", "Price: high to low", "Name: A–Z"],
+    trust: [
+      ["Chosen by a working coach", "Every product is picked by an aerialist who trains, teaches and rigs every week."],
+      ["Flat $2.99 shipping", "On aerial training gear to the United States, Colombia and Venezuela, delivered in 9–14 days."],
+      ["30-day returns", "Not right for you? Return it within 30 days of delivery."],
+    ],
+    aboutH: "Built by an aerialist", aboutP: "Aerial Needs was started by Miguel Arana, an aerialist and circus coach who has spent his career in the air.", aboutLink: "Our story",
+    coachH: "Coaches & studios", coachP: "Ask about our coach and studio program for you and your students.", coachLink: "Contact us",
+    guides: "Guides", guidesH: "Training guides", guidesDesc: "Short, practical guides to aerial training gear from Aerial Needs.", shopGear: "Shop the gear", read: "Read the guide",
     policyFor: "for Aerial Needs.",
   },
   es: {
@@ -65,6 +104,25 @@ const T = {
     contactDesc: "Contacta a Aerial Needs sobre pedidos, tallas, códigos de coach y alianzas con estudios.",
     searchP: "Muñequeras, cintas, poi…", searchProducts: "Buscar productos", searchDesc: "Busca productos de Aerial Needs.",
     results: "resultado", resultsPl: "resultados", notFound: "Página no encontrada", notFoundP: "Lo sentimos, no encontramos esa página.",
+    announce: "Envío fijo de $2.99 en equipo aéreo · Entrega en 9 a 14 días · Devoluciones en 30 días",
+    fmAssure: ["Hecho en EE. UU. por Fire Mecca", "Envío calculado al pagar", "Devoluciones en 30 días"],
+    faqH: "Envíos, devoluciones y seguridad",
+    faq: [
+      ["¿Cuánto tarda la entrega?", "Los pedidos llegan en 9 a 14 días. Te enviamos el número de rastreo por correo cuando sale tu pedido.", 1],
+      ["¿Cuánto cuesta el envío y a dónde envían?", "El equipo de entrenamiento aéreo tiene un envío fijo de $2.99 a Estados Unidos, Colombia y Venezuela.", 1],
+      ["¿Puedo devolverlo?", "Sí, dentro de los 30 días posteriores a la entrega. Los pedidos de EE. UU. reciben un reemplazo; los de Colombia y Venezuela reciben crédito en la tienda. El cliente paga el envío de la devolución.", 0],
+      ["¿Es equipo de seguridad?", "No. Nuestros accesorios no son sistemas de protección contra caídas. Entrena siempre con un coach calificado.", 1],
+    ],
+    coachCode: "¿Tienes un código de coach? Ingrésalo al pagar.",
+    sortBy: "Ordenar por", sorts: ["Destacados", "Precio: menor a mayor", "Precio: mayor a menor", "Nombre: A–Z"],
+    trust: [
+      ["Elegido por un coach activo", "Cada producto lo escoge un artista aéreo que entrena, enseña y monta equipos cada semana."],
+      ["Envío fijo de $2.99", "En equipo de entrenamiento aéreo a Estados Unidos, Colombia y Venezuela, con entrega en 9 a 14 días."],
+      ["Devoluciones en 30 días", "¿No era lo que buscabas? Devuélvelo dentro de los 30 días posteriores a la entrega."],
+    ],
+    aboutH: "Creado por un artista aéreo", aboutP: "Aerial Needs fue creado por Miguel Arana, artista aéreo y coach de circo con toda una carrera en el aire.", aboutLink: "Nuestra historia",
+    coachH: "Coaches y estudios", coachP: "Pregunta por nuestro programa para coaches y estudios, para ti y tus alumnos.", coachLink: "Contáctanos",
+    guides: "Guías", guidesH: "Guías de entrenamiento", guidesDesc: "Guías cortas y prácticas sobre equipo de entrenamiento aéreo, por Aerial Needs.", shopGear: "Compra el equipo", read: "Leer la guía",
     policyFor: "de Aerial Needs.",
   },
 };
@@ -72,7 +130,7 @@ const LOCALES = ["en", "es"];
 const PREFIX = { en: "", es: "/es" };
 
 // ---------- per-locale state (set before rendering each language) ----------
-let L = "en", t = T.en, NAV = [], POLICIES = [], PAGE_LINKS = [], LOGO = "";
+let L = "en", t = T.en, NAV = [], POLICIES = [], PAGE_LINKS = [], LOGO = "", ABOUT = "";
 
 // ---------- helpers ----------
 const esc = (s = "") =>
@@ -193,6 +251,7 @@ function header(switchHref) {
   const links = NAV.map((n) => `<li><a href="${u(n.href)}">${esc(n.label)}</a></li>`).join("");
   const sw = `<li><a href="${esc(switchHref)}" hreflang="${L === "en" ? "es" : "en"}" class="lang">${esc(t.language)}</a></li>`;
   return `<a class="skip" href="#main">${esc(t.skip)}</a>
+<p class="announce">${esc(t.announce)}</p>
 <header class="site-header">
   <div class="wrap header-row">
     <details class="menu"><summary aria-label="${esc(t.menu)}"><span></span><span></span><span></span></summary>
@@ -237,7 +296,7 @@ function cartDrawer() {
   <div class="cart-head"><h2>${esc(t.cart)}</h2><button class="icon-btn cart-close" aria-label="${esc(t.close)}">✕</button></div>
   <div class="cart-lines"><p class="muted">${esc(t.empty)}</p></div>
   <div class="cart-foot"><div class="cart-sub"><span>${esc(t.subtotal)}</span><strong class="cart-total">$0.00</strong></div>
-    <p class="muted small">${esc(t.taxes)}</p>
+    <p class="muted small">${esc(t.taxes)} ${esc(t.coachCode)}</p>
     <a class="btn btn-primary cart-checkout" href="#" aria-disabled="true">${esc(t.checkout)}</a></div>
 </aside>`;
 }
@@ -255,7 +314,7 @@ function priceHtml(p) {
 
 function card(p, eager = false) {
   const im = p.featuredImage;
-  return `<li class="card"><a href="${u(`/products/${p.handle}/`)}">
+  return `<li class="card" data-price="${Number(p.priceRange.minVariantPrice.amount)}" data-title="${esc(p.title)}"><a href="${u(`/products/${p.handle}/`)}">
   <div class="card-img">${
     im
       ? `<img src="${esc(img(im.url, 500))}" srcset="${esc(srcset(im.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 280px" alt="${esc(im.altText || p.title)}" width="500" height="500" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
@@ -305,6 +364,8 @@ function productPage(p, colById) {
     .join("");
   const thumbs = images.length > 1 ? `<ul class="thumbs">${images.map((im, i) => `<li><button type="button" data-i="${i}" aria-label="${esc(t.image)} ${i + 1}"><img src="${esc(img(im.url, 120))}" alt="" width="60" height="60" loading="lazy"></button></li>`).join("")}</ul>` : "";
   const brand = p.vendor || "Aerial Needs";
+  const own = brand === "Aerial Needs"; // partner products (Fire Mecca) ship on their own terms
+  const faqs = t.faq.filter((f) => own || !f[2]);
   const url = abs(lp(path_));
   const ld = {
     "@context": "https://schema.org",
@@ -314,6 +375,8 @@ function productPage(p, colById) {
     image: images.slice(0, 6).map((i) => i.url),
     brand: { "@type": "Brand", name: brand },
     sku: p.variants.nodes[0]?.id.split("/").pop(),
+    category: mainCol?.title || p.productType || undefined,
+    inLanguage: L,
     url,
     offers: p.variants.nodes.map((v) => ({
       "@type": "Offer",
@@ -323,15 +386,17 @@ function productPage(p, colById) {
       availability: v.availableForSale ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
       name: v.title === "Default Title" ? p.title : `${p.title} – ${v.title}`,
-      shippingDetails: {
+      seller: { "@type": "Organization", name: "Aerial Needs" },
+      ...(own ? { shippingDetails: ["US", "CO", "VE"].map((cc) => ({
         "@type": "OfferShippingDetails",
         shippingRate: { "@type": "MonetaryAmount", value: "2.99", currency: "USD" },
-        shippingDestination: { "@type": "DefinedRegion", addressCountry: "US" },
+        shippingDestination: { "@type": "DefinedRegion", addressCountry: cc },
         deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 8, maxValue: 11, unitCode: "DAY" } },
-      },
+      })) } : {}),
       hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "US", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 30, returnMethod: "https://schema.org/ReturnByMail", returnFees: "https://schema.org/ReturnShippingFees" },
     })),
   };
+  const faqLd = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map((f) => ({ "@type": "Question", name: f[0], acceptedAnswer: { "@type": "Answer", text: f[1] } })) };
   const related = mainCol ? mainCol._products.filter((x) => x.id !== p.id).slice(0, 4) : [];
   const body = `<div class="wrap">${bc.html}
 <article class="pdp">
@@ -340,7 +405,7 @@ function productPage(p, colById) {
     ${brand !== "Aerial Needs" ? `<p class="vendor">${esc(brand)}</p>` : ""}
     <h1>${esc(p.title)}</h1>
     <p class="pdp-price" aria-live="polite">${priceHtml(p)}</p>
-    <form class="buy" data-product="${esc(p.id)}">
+    <form class="buy" id="buy" data-product="${esc(p.id)}">
       ${opts}
       <div class="qty-row"><label class="sr" for="qty">${esc(t.qty)}</label>
         <div class="qty"><button type="button" data-q="-1" aria-label="${esc(t.dec)}">−</button><input id="qty" name="qty" type="number" min="1" value="1" inputmode="numeric"><button type="button" data-q="1" aria-label="${esc(t.inc)}">+</button></div>
@@ -348,13 +413,15 @@ function productPage(p, colById) {
       <input type="hidden" name="variant" value="${esc(firstAvail.id)}">
     </form>
     <script type="application/json" class="variants">${JSON.stringify(variantsJson).replace(/</g, "\\u003c")}</script>
-    <ul class="assure">${t.assure.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+    <ul class="assure">${(own ? t.assure : t.fmAssure).map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
     <div class="rte">${cleanHtml(p.descriptionHtml)}</div>
+    <section class="faq"><h2>${esc(t.faqH)}</h2>${faqs.map((f) => `<details><summary>${esc(f[0])}</summary><p>${esc(f[1])}</p></details>`).join("")}</section>
   </div>
 </article>
+<div class="sticky-buy" hidden><div class="sb-txt"><strong>${esc(p.title)}</strong><span class="sb-price"></span></div><button class="btn btn-primary" type="submit" form="buy"></button></div>
 ${related.length ? `<section class="related"><h2>${esc(t.moreFrom)} ${esc(mainCol.title)}</h2><ul class="grid">${related.map((r) => card(r)).join("")}</ul></section>` : ""}
 </div>`;
-  return { key: p.id, path: path_, html: layout({ key: p.id, title, description: desc, canonical: url, body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld] }) };
+  return { key: p.id, path: path_, html: layout({ key: p.id, title, description: desc, canonical: url, body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld, faqLd] }) };
 }
 
 function collectionPage(c) {
@@ -373,7 +440,8 @@ function collectionPage(c) {
   };
   const body = `<div class="wrap">${bc.html}
 <header class="col-head"><h1>${esc(name)}</h1>${c.descriptionHtml ? `<div class="rte col-desc">${cleanHtml(c.descriptionHtml)}</div>` : ""}</header>
-<ul class="grid">${c._products.map((p, i) => card(p, i < 4)).join("")}</ul></div>`;
+<div class="sortbar"><label for="sort">${esc(t.sortBy)}</label> <select id="sort">${t.sorts.map((x, i) => `<option value="${i}">${esc(x)}</option>`).join("")}</select></div>
+<ul class="grid sortable">${c._products.map((p, i) => card(p, i < 4)).join("")}</ul></div>`;
   return { key: c.id, path: path_, html: layout({ key: c.id, title, description: desc, canonical: url, body, ogImage: c.image?.url, jsonld: [ld, bc.ld] }) };
 }
 
@@ -396,6 +464,7 @@ function homePage(cols, colByHandle) {
   </div>
 </section>
 <div class="wrap">
+<ul class="trust">${t.trust.map((x) => `<li><strong>${esc(x[0])}</strong><span>${esc(x[1])}</span></li>`).join("")}</ul>
 <section><h2 class="sec-h">${esc(t.byCat)}</h2>
 <ul class="cats">${show
     .map((c) => `<li><a href="${u(`/collections/${c.handle}/`)}">${c.image ? `<img src="${esc(img(c.image.url, 500))}" srcset="${esc(srcset(c.image.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 300px" alt="" width="500" height="500" loading="lazy">` : ""}<span>${esc(c.title)}</span></a></li>`)
@@ -403,10 +472,19 @@ function homePage(cols, colByHandle) {
 ${kits.length ? `<section><h2 class="sec-h">${esc(t.kitsH)} <small>${esc(t.save)}</small></h2><ul class="grid">${kits.map((p) => card(p)).join("")}</ul></section>` : ""}
 ${best.length ? `<section><h2 class="sec-h">${esc(t.gear)}</h2><ul class="grid">${best.map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u(`/collections/${ch("all")}/`)}">${esc(t.viewAll)}</a></p></section>` : ""}
 ${fire.length ? `<section class="fire"><h2 class="sec-h">${esc(t.fireH)} <small>${esc(t.fireSub)}</small></h2><ul class="grid scroller">${fire.slice(0, 12).map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u(`/collections/${ch("fire-mecca-partnership")}/`)}">${esc(t.shopFire)}</a></p></section>` : ""}
+<section><h2 class="sec-h">${esc(t.guidesH)}</h2><ul class="guide-list">${GUIDES.map((g) => `<li><a href="${u(`/guides/${g[L].slug}/`)}"><strong>${esc(g[L].title)}</strong><span>${esc(g[L].description)}</span></a></li>`).join("")}</ul></section>
+<section class="split">
+  <div><h2>${esc(t.aboutH)}</h2><p>${esc(t.aboutP)}</p>${ABOUT ? `<p><a class="btn btn-ghost" href="${u(ABOUT)}">${esc(t.aboutLink)}</a></p>` : ""}</div>
+  <div><h2>${esc(t.coachH)}</h2><p>${esc(t.coachP)}</p><p><a class="btn btn-ghost" href="${u("/pages/contact/")}">${esc(t.coachLink)}</a></p></div>
+</section>
 </div>`;
   const home = abs(lp("/"));
   const ld = [
-    { "@context": "https://schema.org", "@type": "Organization", name: "Aerial Needs", url: SITE_URL + "/", logo: LOGO || undefined, email: cfg.email, sameAs: ["https://www.instagram.com/aerialneeds.store/"] },
+    { "@context": "https://schema.org", "@type": "OnlineStore", name: "Aerial Needs", url: SITE_URL + "/", logo: LOGO || undefined, email: cfg.email, description: cfg.home[L].description,
+      founder: { "@type": "Person", name: "Miguel Arana", jobTitle: "Aerialist and circus coach" }, parentOrganization: { "@type": "Organization", name: "Ares Entertainment LLC" },
+      areaServed: ["US", "CO", "VE"], knowsLanguage: ["en", "es"], sameAs: ["https://www.instagram.com/aerialneeds.store/"],
+      contactPoint: { "@type": "ContactPoint", contactType: "customer service", email: cfg.email, availableLanguage: ["English", "Spanish"] },
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: ["US", "CO", "VE"], returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 30, returnMethod: "https://schema.org/ReturnByMail", returnFees: "https://schema.org/ReturnShippingFees" } },
     { "@context": "https://schema.org", "@type": "WebSite", name: "Aerial Needs", url: home, inLanguage: L, potentialAction: { "@type": "SearchAction", target: home + "search/?q={q}", "query-input": "required name=q" } },
   ];
   return { key: "home", path: "/", html: layout({ key: "home", title: cfg.home[L].title, description: cfg.home[L].description, canonical: home, body, ogImage: heroImg, jsonld: ld }) };
@@ -415,6 +493,25 @@ ${fire.length ? `<section class="fire"><h2 class="sec-h">${esc(t.fireH)} <small>
 function simplePage({ key, path: p, title, heading, bodyHtml, description, noindex }) {
   const body = `<div class="wrap narrow"><h1>${esc(heading)}</h1><div class="rte">${bodyHtml}</div></div>`;
   return { key, path: p, html: layout({ key, title, description, canonical: abs(lp(p)), body, noindex }) };
+}
+
+function guidePage(g, d) {
+  const c = g[L], path_ = `/guides/${c.slug}/`, url = abs(lp(path_));
+  const html = c.html.replace(/\{\{col:([\w-]+)\}\}/g, (_, h) => u(`/collections/${d.colByEnHandle[h]?.handle || h}/`));
+  const cols = g.collections.map((h) => d.colByEnHandle[h]).filter((x) => x && x._products.length);
+  const bc = breadcrumbs([{ name: t.home, path: "/" }, { name: t.guides, path: "/guides/" }, { name: c.title, path: path_ }]);
+  const ld = { "@context": "https://schema.org", "@type": "Article", headline: c.title, description: c.description, inLanguage: L, datePublished: g.date, dateModified: g.date, mainEntityOfPage: url,
+    author: { "@type": "Organization", name: "Aerial Needs", url: SITE_URL + "/" }, publisher: { "@type": "Organization", name: "Aerial Needs", logo: LOGO ? { "@type": "ImageObject", url: LOGO } : undefined } };
+  const body = `<div class="wrap">${bc.html}<article class="narrow guide"><h1>${esc(c.title)}</h1><div class="rte">${html}</div></article>
+<section><h2 class="sec-h">${esc(t.shopGear)}</h2><ul class="grid">${(cols[0]?._products || []).slice(0, 4).map((p) => card(p)).join("")}</ul></section></div>`;
+  return { key: "guide:" + g.key, path: path_, html: layout({ key: "guide:" + g.key, title: `${c.title} | Aerial Needs`, description: c.description, canonical: url, body, ogType: "article", jsonld: [ld, bc.ld] }) };
+}
+
+function guidesIndex() {
+  const bc = breadcrumbs([{ name: t.home, path: "/" }, { name: t.guides, path: "/guides/" }]);
+  const body = `<div class="wrap">${bc.html}<h1>${esc(t.guidesH)}</h1><p class="muted">${esc(t.guidesDesc)}</p>
+<ul class="guide-list">${GUIDES.map((g) => `<li><a href="${u(`/guides/${g[L].slug}/`)}"><strong>${esc(g[L].title)}</strong><span>${esc(g[L].description)}</span></a></li>`).join("")}</ul></div>`;
+  return { key: "guides", path: "/guides/", html: layout({ key: "guides", title: `${t.guidesH} | Aerial Needs`, description: t.guidesDesc, canonical: abs(lp("/guides/")), body, jsonld: [bc.ld] }) };
 }
 
 function contactPage() {
@@ -460,6 +557,7 @@ function prepare(data) {
 
 async function main() {
   const fixIdx = process.argv.indexOf("--fixture");
+  await resolveMode(fixIdx > -1);
   let raw;
   if (fixIdx > -1) {
     const f = JSON.parse(fs.readFileSync(process.argv[fixIdx + 1]));
@@ -484,7 +582,8 @@ async function main() {
   const addAlt = (key, loc, p) => ((ALT[key] ||= {})[loc] = lp(p, loc));
   for (const loc of LOCALES) {
     const d = D[loc];
-    addAlt("home", loc, "/"); addAlt("contact", loc, "/pages/contact/"); addAlt("search", loc, "/search/");
+    addAlt("home", loc, "/"); addAlt("contact", loc, "/pages/contact/"); addAlt("search", loc, "/search/"); addAlt("guides", loc, "/guides/");
+    for (const g of GUIDES) addAlt("guide:" + g.key, loc, `/guides/${g[loc].slug}/`);
     for (const p of d.products) addAlt(p.id, loc, `/products/${p.handle}/`);
     for (const c of d.cols) if (c._products.length) addAlt(c.id, loc, `/collections/${c.handle}/`);
     for (const pg of d.pages) if ((enPageHandle[pg.id] || pg.handle) !== "contact") addAlt(pg.id, loc, `/pages/${pg.handle}/`);
@@ -503,7 +602,9 @@ async function main() {
       .map(({ n, c }) => ({ label: n.label[loc] || n.label.en, href: `/collections/${c.handle}/` }));
     POLICIES = d.policies;
     const pages = d.pages.filter((p) => (enPageHandle[p.id] || p.handle) !== "contact");
-    PAGE_LINKS = [...pages.map((p) => ({ label: p.title, href: `/pages/${p.handle}/` })), { label: t.contact, href: "/pages/contact/" }];
+    PAGE_LINKS = [...pages.map((p) => ({ label: p.title, href: `/pages/${p.handle}/` })), { label: t.guides, href: "/guides/" }, { label: t.contact, href: "/pages/contact/" }];
+    const about = pages.find((p) => enPageHandle[p.id] === "about");
+    ABOUT = about ? `/pages/${about.handle}/` : "";
 
     const out = [];
     out.push(homePage(d.cols, d.colByEnHandle));
@@ -512,6 +613,8 @@ async function main() {
     for (const pg of pages)
       out.push(simplePage({ key: pg.id, path: `/pages/${pg.handle}/`, title: pg.seo?.title || `${pg.title} | Aerial Needs`, heading: pg.title, bodyHtml: cleanHtml(pg.body), description: pg.seo?.description || clip(strip(pg.body), 155) }));
     out.push(contactPage());
+    out.push(guidesIndex());
+    for (const g of GUIDES) out.push(guidePage(g, d));
     for (const pol of POLICIES)
       out.push(simplePage({ key: enPolicyKey(pol), path: `/policies/${pol.handle}/`, title: `${pol.title} | Aerial Needs`, heading: pol.title, bodyHtml: pol.body, description: `${pol.title} ${t.policyFor}` }));
     out.push(searchPage());
@@ -544,7 +647,39 @@ async function main() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${indexable.map((o) => `<url><loc>${abs(o.url)}</loc><lastmod>${(updated[o.key] || new Date().toISOString()).slice(0, 10)}</lastmod>${xhtml(o.key)}</url>`).join("\n")}
 </urlset>`);
-  fs.writeFileSync(path.join(OUT, "robots.txt"), PREVIEW ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /es/search/\n\nSitemap: ${abs("/sitemap.xml")}\n`);
+  const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended", "Applebot-Extended", "Amazonbot", "meta-externalagent"];
+  fs.writeFileSync(path.join(OUT, "robots.txt"), PREVIEW ? "User-agent: *\nDisallow: /\n"
+    : `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /es/search/\n\n# AI search and shopping assistants are welcome\n${AI_BOTS.map((b) => `User-agent: ${b}`).join("\n")}\nAllow: /\n\nSitemap: ${abs("/sitemap.xml")}\n`);
+
+  // llms.txt — a plain-text map of the store for AI assistants
+  const en = D.en, strip1 = (h) => clip(strip(h || ""), 160);
+  fs.writeFileSync(path.join(OUT, "llms.txt"), `# Aerial Needs
+
+> ${cfg.home.en.description}
+
+Aerial Needs is an online store for aerial arts, circus and fire performance equipment, founded by Miguel Arana, an aerialist and circus coach. It is operated by Ares Entertainment LLC.
+
+## Key facts
+- Ships to the United States, Colombia and Venezuela
+- Aerial training gear ships for a flat $2.99, delivered in 9 to 14 days
+- 30-day returns: US orders get a replacement; Colombia and Venezuela orders get store credit
+- Available in English (${SITE_URL}/) and Spanish (${SITE_URL}/es/); Colombian prices shown in COP
+- Fire performance gear is American-made by partner Fire Mecca
+- These accessories are not fall-protection equipment; always train with a qualified coach
+- Contact: ${cfg.email} · Instagram @aerialneeds.store
+
+## Collections
+${en.cols.filter((c) => c._products.length && c.handle !== "all").map((c) => `- [${c.title}](${abs(`/collections/${c.handle}/`)}): ${strip1(c.descriptionHtml)}`).join("\n")}
+
+## Products
+${en.products.map((p) => `- [${p.title}](${abs(`/products/${p.handle}/`)}): ${money(p.priceRange.minVariantPrice)}${p.vendor && p.vendor !== "Aerial Needs" ? `, by ${p.vendor}` : ""}. ${strip1(p.seo?.description || p.descriptionHtml)}`).join("\n")}
+
+## Guides
+${GUIDES.map((g) => `- [${g.en.title}](${abs(`/guides/${g.en.slug}/`)}): ${g.en.description}`).join("\n")}
+
+## Help
+${[...D.en.pages.filter((p) => p.handle !== "contact").map((p) => `- [${p.title}](${abs(`/pages/${p.handle}/`)})`), `- [Contact](${abs("/pages/contact/")})`, ...en.policies.map((p) => `- [${p.title}](${abs(`/policies/${p.handle}/`)})`)].join("\n")}
+`);
   if (!PREVIEW && cfg.customDomain) fs.writeFileSync(path.join(OUT, "CNAME"), cfg.customDomain + "\n");
   fs.writeFileSync(path.join(OUT, ".nojekyll"), "");
   const n = (loc) => written.filter((w) => w.loc === loc).length;

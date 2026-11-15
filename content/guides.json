@@ -1,0 +1,36 @@
+[
+  {
+    "key": "aerial-bag",
+    "date": "2026-11-14",
+    "collections": ["aerial-essentials", "grip-and-tape", "aerial-guard-collection", "fitness-and-stretch"],
+    "en": {
+      "slug": "what-to-pack-in-your-aerial-bag",
+      "title": "What to Pack in Your Aerial Bag",
+      "description": "A coach's checklist of what to bring to aerial silks, straps, lyra or trapeze class: grip, wrist and skin protection, tape and warm-up gear.",
+      "html": "<p>A well-packed bag means you spend class training, not borrowing gear. Here is what most aerialists keep with them for silks, straps, lyra and trapeze.</p><h2>Grip</h2><p>Sweaty hands end sessions early. Carry a grip aid your studio allows: chalk, rosin or a grip spray. Rules differ by apparatus and space, so ask your coach first. <a href=\"{{col:grip-and-tape}}\">See grip and tape</a>.</p><h2>Wrist and skin protection</h2><p>Wrist wraps add support for straps and handstand work. Sleeves for elbows, knees and ankles cut down fabric and strap burn on the points that take the most friction. <a href=\"{{col:aerial-guard-collection}}\">See the Aerial Guard collection</a>.</p><h2>Tape</h2><p>Athletic tape and pre-wrap protect hands and wrists during long sessions. Tape supports training; it does not treat an injury, so see a professional if something hurts.</p><h2>Warm-up and recovery</h2><p>Pack resistance bands for shoulder and hip activation, plus a massage tool for after class. <a href=\"{{col:fitness-and-stretch}}\">See fitness and stretch gear</a>.</p><h2>One bag, ready to go</h2><p>If you would rather start with everything at once, our kits bundle wrist wraps, tape, chalk and a carry bag. <a href=\"{{col:aerial-essentials}}\">Compare the kits</a>.</p><p><em>These accessories are not fall-protection equipment. Always train with a qualified coach.</em></p>"
+    },
+    "es": {
+      "slug": "que-llevar-en-tu-bolso-de-aereos",
+      "title": "Qué llevar en tu bolso de aéreos",
+      "description": "La lista de un coach con lo que debes llevar a clase de telas, straps, lira o trapecio: grip, protección para muñecas y piel, cinta y calentamiento.",
+      "html": "<p>Un bolso bien armado significa que usas la clase para entrenar, no para pedir equipo prestado. Esto es lo que la mayoría de los artistas aéreos lleva a telas, straps, lira y trapecio.</p><h2>Grip</h2><p>Las manos sudadas terminan la sesión antes de tiempo. Lleva un producto de agarre que tu estudio permita: magnesio, resina o grip en spray. Las reglas cambian según el aparato y el espacio, así que pregunta primero a tu coach. <a href=\"{{col:grip-and-tape}}\">Ver grip y cintas</a>.</p><h2>Protección para muñecas y piel</h2><p>Las muñequeras dan soporte en straps y paradas de manos. Las mangas para codos, rodillas y tobillos reducen las quemaduras de tela y cinta en los puntos de mayor fricción. <a href=\"{{col:aerial-guard-collection}}\">Ver la colección Aerial Guard</a>.</p><h2>Cinta</h2><p>La cinta atlética y el pre-wrap protegen manos y muñecas en sesiones largas. La cinta acompaña el entrenamiento; no trata una lesión, así que consulta a un profesional si algo duele.</p><h2>Calentamiento y recuperación</h2><p>Lleva bandas de resistencia para activar hombros y cadera, y una herramienta de masaje para después de clase. <a href=\"{{col:fitness-and-stretch}}\">Ver fitness y estiramiento</a>.</p><h2>Un bolso listo para salir</h2><p>Si prefieres empezar con todo de una vez, nuestros kits reúnen muñequeras, cinta, magnesio y un bolso. <a href=\"{{col:aerial-essentials}}\">Compara los kits</a>.</p><p><em>Estos accesorios no son equipo de protección contra caídas. Entrena siempre con un coach calificado.</em></p>"
+    }
+  },
+  {
+    "key": "wraps-tape-grip",
+    "date": "2026-11-14",
+    "collections": ["grip-and-tape", "aerial-guard-collection"],
+    "en": {
+      "slug": "wrist-wraps-tape-or-grip-aid",
+      "title": "Wrist Wraps, Tape or Grip Aid: Which Do You Need?",
+      "description": "How wrist wraps, athletic tape and grip aids differ for aerial training, and when aerialists use each one.",
+      "html": "<p>They often sit in the same pocket of the bag, but they do three different jobs.</p><h2>Wrist wraps: support</h2><p>Wrist wraps hold the wrist joint firm under load. Aerialists use them for straps, handstands and conditioning. They are reusable and quick to put on.</p><h2>Tape: skin protection</h2><p>Athletic tape protects skin where the apparatus rubs, and you can shape it to your hand or wrist. A layer of pre-wrap or foam underwrap underneath keeps the adhesive off your skin and makes removal painless.</p><h2>Grip aids: a drier, tackier hold</h2><p>Chalk dries your hands, rosin adds tack, and grip spray is easy to carry and apply. Studios set their own rules for each apparatus, so check before you use one.</p><h2>Which one first?</h2><p>If your hands slip, start with a grip aid. If your wrists tire on straps or handstands, add wrist wraps. If your skin is taking the friction, tape it. Many aerialists carry all three. <a href=\"{{col:grip-and-tape}}\">Shop grip and tape</a>.</p><p><em>Tape and wraps support training; they do not treat injuries. Always train with a qualified coach.</em></p>"
+    },
+    "es": {
+      "slug": "munequeras-cinta-o-grip",
+      "title": "Muñequeras, cinta o grip: ¿cuál necesitas?",
+      "description": "En qué se diferencian las muñequeras, la cinta atlética y los productos de agarre en el entrenamiento aéreo, y cuándo se usa cada uno.",
+      "html": "<p>Suelen ir en el mismo bolsillo del bolso, pero cumplen tres funciones distintas.</p><h2>Muñequeras: soporte</h2><p>Las muñequeras mantienen firme la articulación de la muñeca bajo carga. Se usan en straps, paradas de manos y acondicionamiento. Son reutilizables y rápidas de poner.</p><h2>Cinta: protección de la piel</h2><p>La cinta atlética protege la piel donde roza el aparato y se adapta a tu mano o muñeca. Una capa de pre-wrap o espuma debajo evita que el adhesivo toque la piel y hace que quitarla no duela.</p><h2>Grip: agarre más seco y firme</h2><p>El magnesio seca las manos, la resina da adherencia y el grip en spray es fácil de llevar y aplicar. Cada estudio tiene sus reglas según el aparato, así que pregunta antes de usarlo.</p><h2>¿Cuál primero?</h2><p>Si se te resbalan las manos, empieza con un producto de agarre. Si se te cansan las muñecas en straps o paradas de manos, suma muñequeras. Si la piel es la que recibe la fricción, usa cinta. Muchos artistas aéreos llevan los tres. <a href=\"{{col:grip-and-tape}}\">Ver grip y cintas</a>.</p><p><em>La cinta y las muñequeras acompañan el entrenamiento; no tratan lesiones. Entrena siempre con un coach calificado.</em></p>"
+    }
+  }
+]

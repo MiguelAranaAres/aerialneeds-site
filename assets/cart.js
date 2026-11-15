@@ -178,6 +178,30 @@
     }, { passive: true });
     var t0 = $(".thumbs button"); if (t0) t0.classList.add("on");
     syncVariant();
+    // sticky buy bar on phones: mirrors the main button once it scrolls out of view
+    var sb = $(".sticky-buy");
+    if (sb) {
+      var main = $(".add", form), sbBtn = $(".btn", sb), sbPrice = $(".sb-price", sb);
+      var mirror = function () { sbBtn.textContent = main.textContent; sbBtn.disabled = main.disabled; sbPrice.textContent = $(".pdp-price").textContent; };
+      mirror();
+      new MutationObserver(mirror).observe($(".pdp-info"), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["disabled"] });
+      var place = function () { sb.hidden = main.getBoundingClientRect().bottom > 0; };
+      window.addEventListener("scroll", place, { passive: true }); place();
+    }
+  }
+
+  // ---------------- collection sort ----------------
+  var sortSel = $("#sort"), grid = $(".sortable");
+  if (sortSel && grid) {
+    var orig = Array.prototype.slice.call(grid.children);
+    sortSel.addEventListener("change", function () {
+      var m = sortSel.value, items = orig.slice();
+      var price = function (el) { return Number(el.getAttribute("data-price")); };
+      if (m === "1") items.sort(function (a, b) { return price(a) - price(b); });
+      if (m === "2") items.sort(function (a, b) { return price(b) - price(a); });
+      if (m === "3") items.sort(function (a, b) { return a.getAttribute("data-title").localeCompare(b.getAttribute("data-title")); });
+      items.forEach(function (el) { grid.appendChild(el); });
+    });
   }
 
   // ---------------- country pricing ----------------
