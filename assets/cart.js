@@ -11,7 +11,9 @@
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
   };
-  var country = store.get(COUNTRY_KEY) || "US";
+  var TX = AN.t, ROOT = AN.base + AN.prefix;
+  var LANG = " @inContext(language: " + AN.lang.toUpperCase() + ")";
+  var country = store.get(COUNTRY_KEY) || (AN.lang === "es" ? "CO" : "US");
 
   function gql(query, variables) {
     return fetch(API, {
@@ -54,21 +56,21 @@
     var n = cart ? cart.totalQuantity : 0;
     count.hidden = !n; count.textContent = n;
     if (!cart || !cart.lines.nodes.length) {
-      lines.innerHTML = '<p class="muted">Your cart is empty.</p>';
+      lines.innerHTML = '<p class="muted">' + esc(TX.empty) + '</p>';
       $(".cart-total").textContent = money({ amount: 0, currencyCode: country === "CO" ? "COP" : "USD" });
       co.setAttribute("aria-disabled", "true"); co.href = "#"; return;
     }
     lines.innerHTML = cart.lines.nodes.map(function (l) {
       var m = l.merchandise, vt = m.title === "Default Title" ? "" : m.title;
       return '<div class="line" data-line="' + esc(l.id) + '">' +
-        '<a href="' + AN.base + "/products/" + esc(m.product.handle) + '/"><img src="' + esc(img(m.image && m.image.url, 140)) + '" alt="" width="70" height="70"></a>' +
+        '<a href="' + ROOT + "/products/" + esc(m.product.handle) + '/"><img src="' + esc(img(m.image && m.image.url, 140)) + '" alt="" width="70" height="70"></a>' +
         "<div><p class=\"lt\">" + esc(m.product.title) + "</p>" + (vt ? '<p class="lv">' + esc(vt) + "</p>" : "") +
-        '<div class="qty"><button type="button" data-d="-1" aria-label="Decrease">−</button><input type="number" min="0" value="' + l.quantity + '" aria-label="Quantity"><button type="button" data-d="1" aria-label="Increase">+</button></div>' +
-        '<button type="button" class="rm">Remove</button></div>' +
+        '<div class="qty"><button type="button" data-d="-1" aria-label="' + esc(TX.dec) + '">−</button><input type="number" min="0" value="' + l.quantity + '" aria-label="' + esc(TX.qty) + '"><button type="button" data-d="1" aria-label="' + esc(TX.inc) + '">+</button></div>' +
+        '<button type="button" class="rm">' + esc(TX.remove) + '</button></div>' +
         "<strong>" + money(l.cost.totalAmount) + "</strong></div>";
     }).join("");
     $(".cart-total").textContent = money(cart.cost.subtotalAmount);
-    co.href = cart.checkoutUrl; co.setAttribute("aria-disabled", "false");
+    co.href = cart.checkoutUrl + (AN.lang === "es" ? (cart.checkoutUrl.indexOf("?") > -1 ? "&" : "?") + "locale=es" : ""); co.setAttribute("aria-disabled", "false");
   }
 
   function setCart(c) { cart = c; store.set(CART_KEY, c ? c.id : null); render(); }
@@ -77,7 +79,7 @@
   function loadCart() {
     var id = store.get(CART_KEY);
     if (!id) return render();
-    gql("query($id:ID!){ cart(id:$id){ " + CART_FIELDS + " } }", { id: id })
+    gql("query($id:ID!)" + LANG + "{ cart(id:$id){ " + CART_FIELDS + " } }", { id: id })
       .then(function (d) { setCart(d.cart); })
       .catch(function () { setCart(null); });
   }
@@ -85,9 +87,9 @@
   function addToCart(variantId, qty) {
     var line = { merchandiseId: variantId, quantity: qty };
     var p = cart
-      ? gql("mutation($id:ID!,$l:[CartLineInput!]!){ cartLinesAdd(cartId:$id, lines:$l){ cart{ " + CART_FIELDS + " } userErrors{ message } } }", { id: cart.id, l: [line] })
+      ? gql("mutation($id:ID!,$l:[CartLineInput!]!)" + LANG + "{ cartLinesAdd(cartId:$id, lines:$l){ cart{ " + CART_FIELDS + " } userErrors{ message } } }", { id: cart.id, l: [line] })
           .then(function (d) { return d.cartLinesAdd; })
-      : gql("mutation($i:CartInput!){ cartCreate(input:$i){ cart{ " + CART_FIELDS + " } userErrors{ message } } }", { i: { lines: [line], buyerIdentity: { countryCode: country } } })
+      : gql("mutation($i:CartInput!)" + LANG + "{ cartCreate(input:$i){ cart{ " + CART_FIELDS + " } userErrors{ message } } }", { i: { lines: [line], buyerIdentity: { countryCode: country } } })
           .then(function (d) { return d.cartCreate; });
     return p.then(function (r) {
       if (r.userErrors && r.userErrors.length) throw new Error(r.userErrors[0].message);
@@ -97,7 +99,7 @@
 
   function updateLine(lineId, qty) {
     busy(true);
-    gql("mutation($id:ID!,$l:[CartLineUpdateInput!]!){ cartLinesUpdate(cartId:$id, lines:$l){ cart{ " + CART_FIELDS + " } userErrors{ message } } }",
+    gql("mutation($id:ID!,$l:[CartLineUpdateInput!]!)" + LANG + "{ cartLinesUpdate(cartId:$id, lines:$l){ cart{ " + CART_FIELDS + " } userErrors{ message } } }",
       { id: cart.id, l: [{ id: lineId, quantity: qty }] })
       .then(function (d) { setCart(d.cartLinesUpdate.cart); })
       .catch(function (e) { toast(e.message); })
@@ -141,9 +143,9 @@
         inp.nextElementSibling.classList.toggle("na", !ok);
       });
     });
-    if (!v) { btn.disabled = true; btn.textContent = "Unavailable"; return; }
+    if (!v) { btn.disabled = true; btn.textContent = TX.unavailable; return; }
     form.variant.value = v.id;
-    btn.disabled = !v.a; btn.textContent = v.a ? "Add to cart" : "Sold out";
+    btn.disabled = !v.a; btn.textContent = v.a ? TX.addToCart : TX.soldOut;
     var price = (pdpPrices && pdpPrices[v.id]) || v.p;
     var cmp = country === "US" && v.c ? '<s class="was">' + money(v.c) + "</s> " : "";
     $(".pdp-price").innerHTML = cmp + "<span>" + money(price) + "</span>";
@@ -160,7 +162,7 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var btn = $(".add", form), label = btn.textContent;
-      btn.disabled = true; btn.textContent = "Adding…";
+      btn.disabled = true; btn.textContent = TX.adding;
       addToCart(form.variant.value, Math.max(1, Number(form.qty.value) || 1))
         .then(function () { openCart(); })
         .catch(function (err) { toast(err.message || "Could not add to cart"); })
@@ -190,7 +192,7 @@
         d.nodes.forEach(function (p) { if (p) map[p.id] = p; });
         els.forEach(function (e) {
           var p = map[e.getAttribute("data-price-pid")]; if (!p) return;
-          e.textContent = (e.getAttribute("data-from") === "1" ? "From " : "") + money(p.priceRange.minVariantPrice);
+          e.textContent = (e.getAttribute("data-from") === "1" ? TX.from : "") + money(p.priceRange.minVariantPrice);
           var s = e.previousElementSibling; if (s && s.classList.contains("was")) s.remove();
           if (form && form.getAttribute("data-product") === p.id) {
             pdpPrices = {}; p.variants.nodes.forEach(function (v) { pdpPrices[v.id] = v.price; }); syncVariant();
@@ -222,13 +224,13 @@
       if (!term) { out.innerHTML = ""; meta.textContent = ""; return; }
       var words = term.split(/\s+/);
       var hits = index.filter(function (p) { var hay = norm(p.t + " " + p.k); return words.every(function (w) { return hay.indexOf(w) > -1; }); });
-      meta.textContent = hits.length + " result" + (hits.length === 1 ? "" : "s");
+      meta.textContent = hits.length + " " + (hits.length === 1 ? TX.results : TX.resultsPl);
       out.innerHTML = hits.map(function (p) {
-        return '<li class="card"><a href="' + AN.base + "/products/" + esc(p.h) + '/"><div class="card-img"><img src="' + esc(img(p.i, 500)) + '" alt="" loading="lazy" width="500" height="500"></div>' +
-          '<p class="card-title">' + esc(p.t) + '</p><p class="card-price">' + (p.f ? "From " : "") + esc(p.p) + "</p></a></li>";
+        return '<li class="card"><a href="' + ROOT + "/products/" + esc(p.h) + '/"><div class="card-img"><img src="' + esc(img(p.i, 500)) + '" alt="" loading="lazy" width="500" height="500"></div>' +
+          '<p class="card-title">' + esc(p.t) + '</p><p class="card-price">' + (p.f ? TX.from : "") + esc(p.p) + "</p></a></li>";
       }).join("");
     };
-    fetch(AN.base + "/assets/search.json").then(function (r) { return r.json(); }).then(function (d) {
+    fetch(AN.base + "/assets/search-" + AN.lang + ".json").then(function (r) { return r.json(); }).then(function (d) {
       index = d; q.value = new URLSearchParams(location.search).get("q") || ""; run();
     });
     q.addEventListener("input", function () { if (index) run(); });

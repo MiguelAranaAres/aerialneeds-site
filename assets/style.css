@@ -152,3 +152,6 @@ section{margin:56px 0}
 .country-select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
 .copy{color:var(--muted);font-size:.8rem;margin-top:30px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--mag);color:#fff;padding:12px 20px;border-radius:99px;z-index:50;font-size:.9rem}
+.lang-btn{align-self:center;text-decoration:none;font:600 .78rem/1 var(--display);letter-spacing:.1em;border:1px solid var(--line);border-radius:99px;padding:6px 9px}
+.lang-btn:hover{border-color:var(--amber)}
+.lang{color:var(--amber)!important}

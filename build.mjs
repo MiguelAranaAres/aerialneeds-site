@@ -1,15 +1,16 @@
-// Aerial Needs static site generator.
+// Aerial Needs static site generator (English + Spanish).
 // Pulls catalog data from the Shopify Storefront API and writes a fully
 // pre-rendered site to ./dist (for GitHub Pages). Cart + checkout stay on Shopify.
+// Spanish pages live under /es/ and use the translations saved in Shopify (Translate & Adapt).
 //
 // Usage:
 //   node build.mjs                     # live data from Shopify
-//   node build.mjs --fixture f.json    # offline build from a saved snapshot
+//   node build.mjs --fixture f.json    # offline build from a saved snapshot ({en:{…}, es:{…}} or a single dataset)
 //
 // Env (all optional, defaults in config.json):
-//   SITE_URL       canonical origin, e.g. https://www.aerialneeds.com
-//   BASE_PATH      path prefix when served from a sub-folder (GitHub preview), e.g. /aerialneeds-site
-//   PREVIEW=1      adds noindex everywhere and blocks robots (use before the domain switch)
+//   SITE_URL        canonical origin, e.g. https://www.aerialneeds.com
+//   BASE_PATH       path prefix when served from a sub-folder (GitHub preview), e.g. /aerialneeds-site
+//   PREVIEW=1       adds noindex everywhere and blocks robots (use before the domain switch)
 //   FALLBACK_ORIGIN where unknown URLs (account, unlisted products…) are sent, e.g. https://shop.aerialneeds.com
 
 import fs from "node:fs";
@@ -22,14 +23,65 @@ const PREVIEW = process.env.PREVIEW ? process.env.PREVIEW === "1" : !!cfg.previe
 const FALLBACK = (process.env.FALLBACK_ORIGIN || cfg.fallbackOrigin).replace(/\/$/, "");
 const OUT = path.resolve("dist");
 const API = `https://${cfg.shopDomain}/api/${cfg.apiVersion}/graphql.json`;
+const BUILD_ID = Date.now().toString(36);
+
+// ---------- UI text ----------
+const T = {
+  en: {
+    skip: "Skip to content", menu: "Menu", search: "Search", openCart: "Open cart", cart: "Your cart", close: "Close cart",
+    empty: "Your cart is empty.", subtotal: "Subtotal", taxes: "Shipping and taxes calculated at checkout.", checkout: "Checkout",
+    tagline: "Built for Those Who Dare to Fly.", shipsTo: "Ships to the United States, Colombia and Venezuela · flat $2.99 shipping · 9–14 day delivery.",
+    shop: "Shop", help: "Help", shipTo: "Ship to", country: "Country", language: "Español", contact: "Contact",
+    from: "From ", soldOut: "Sold out", addToCart: "Add to cart", adding: "Adding…", unavailable: "Unavailable", remove: "Remove",
+    qty: "Quantity", dec: "Decrease", inc: "Increase", image: "Image",
+    assure: ["Flat $2.99 shipping", "Delivery in 9–14 days", "30-day returns"], moreFrom: "More from",
+    home: "Home", allProducts: "All products",
+    eyebrow: "Aerial · Circus · Fire", hero: "ELEVATE YOUR PERFORMANCE",
+    lead: "Built for Those Who Dare to Fly. Wrist wraps, tape, grips, protection and fire gear chosen for aerial training.",
+    shopAll: "Shop all gear", kits: "Training kits", byCat: "Shop by category", kitsH: "Aerial Essentials kits", save: "Save up to 35%",
+    gear: "Training gear", viewAll: "View all", fireH: "Fire Mecca Partnership", fireSub: "American-made fire performance gear", shopFire: "Shop Fire Mecca",
+    contactH: "Contact us", contactP: "Questions about sizing, orders, coach codes or studio partnerships? We answer in English and Spanish.",
+    email: "Email", track: "Track an order or manage your account on our", accountPage: "account page",
+    contactDesc: "Contact Aerial Needs about orders, sizing, coach codes and studio partnerships.",
+    searchP: "Wrist wraps, tape, poi…", searchProducts: "Search products", searchDesc: "Search Aerial Needs products.",
+    results: "result", resultsPl: "results", notFound: "Page not found", notFoundP: "Sorry, we couldn't find that page.",
+    policyFor: "for Aerial Needs.",
+  },
+  es: {
+    skip: "Saltar al contenido", menu: "Menú", search: "Buscar", openCart: "Abrir carrito", cart: "Tu carrito", close: "Cerrar carrito",
+    empty: "Tu carrito está vacío.", subtotal: "Subtotal", taxes: "El envío y los impuestos se calculan al pagar.", checkout: "Pagar",
+    tagline: "Hecho para quienes se atreven a volar.", shipsTo: "Enviamos a Estados Unidos, Colombia y Venezuela · envío fijo de $2.99 · entrega en 9 a 14 días.",
+    shop: "Tienda", help: "Ayuda", shipTo: "Enviar a", country: "País", language: "English", contact: "Contacto",
+    from: "Desde ", soldOut: "Agotado", addToCart: "Agregar al carrito", adding: "Agregando…", unavailable: "No disponible", remove: "Eliminar",
+    qty: "Cantidad", dec: "Disminuir", inc: "Aumentar", image: "Imagen",
+    assure: ["Envío fijo de $2.99", "Entrega en 9 a 14 días", "Devoluciones en 30 días"], moreFrom: "Más de",
+    home: "Inicio", allProducts: "Todos los productos",
+    eyebrow: "Aéreos · Circo · Fuego", hero: "ELEVA TU RENDIMIENTO",
+    lead: "Hecho para quienes se atreven a volar. Muñequeras, cintas, grips, protección y equipo de fuego elegidos para el entrenamiento aéreo.",
+    shopAll: "Ver todo el equipo", kits: "Kits de entrenamiento", byCat: "Compra por categoría", kitsH: "Kits Aerial Essentials", save: "Ahorra hasta 35%",
+    gear: "Equipo de entrenamiento", viewAll: "Ver todo", fireH: "Alianza Fire Mecca", fireSub: "Equipo de fuego hecho en EE. UU.", shopFire: "Ver Fire Mecca",
+    contactH: "Contáctanos", contactP: "¿Preguntas sobre tallas, pedidos, códigos de coach o alianzas con estudios? Respondemos en español e inglés.",
+    email: "Escribir a", track: "Rastrea tu pedido o administra tu cuenta en nuestra", accountPage: "página de cuenta",
+    contactDesc: "Contacta a Aerial Needs sobre pedidos, tallas, códigos de coach y alianzas con estudios.",
+    searchP: "Muñequeras, cintas, poi…", searchProducts: "Buscar productos", searchDesc: "Busca productos de Aerial Needs.",
+    results: "resultado", resultsPl: "resultados", notFound: "Página no encontrada", notFoundP: "Lo sentimos, no encontramos esa página.",
+    policyFor: "de Aerial Needs.",
+  },
+};
+const LOCALES = ["en", "es"];
+const PREFIX = { en: "", es: "/es" };
+
+// ---------- per-locale state (set before rendering each language) ----------
+let L = "en", t = T.en, NAV = [], POLICIES = [], PAGE_LINKS = [], LOGO = "";
 
 // ---------- helpers ----------
 const esc = (s = "") =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const strip = (h = "") => h.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const clip = (s, n) => (s.length <= n ? s : s.slice(0, s.lastIndexOf(" ", n - 1)).replace(/[,.;:–-]+$/, "") + "…");
-const u = (p) => BASE + p;
-const abs = (p) => SITE_URL + p;
+const lp = (p, loc = L) => PREFIX[loc] + p; // locale path (no base)
+const u = (p) => BASE + lp(p); // link inside the current locale
+const abs = (p) => SITE_URL + p; // p already locale-prefixed
 const money = (m) => {
   if (!m) return "";
   const n = Number(m.amount);
@@ -37,7 +89,6 @@ const money = (m) => {
 };
 const img = (url, w) => (url ? url + (url.includes("?") ? "&" : "?") + "width=" + w : "");
 const srcset = (url, sizes = [300, 500, 800, 1200]) => sizes.map((w) => `${img(url, w)} ${w}w`).join(", ");
-// Clean Shopify description HTML: drop inline styles, empty paragraphs, editor attributes.
 const cleanHtml = (h = "") =>
   h
     .replace(/\s(style|data-mce-[\w-]+|data-start|data-end)="[^"]*"/gi, "")
@@ -64,41 +115,55 @@ const PRODUCT_FIELDS = `
   options { name optionValues { name } }
   priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
   variants(first: 100) { nodes { id title availableForSale price { amount currencyCode } compareAtPrice { amount currencyCode } selectedOptions { name value } image { url } } }
-  collections(first: 10) { nodes { handle } }`;
+  collections(first: 10) { nodes { id handle } }`;
 
-async function fetchAll() {
+async function fetchLocale(lang) {
+  const ctx = `@inContext(language: ${lang.toUpperCase()})`;
   const products = [];
   let after = null;
   do {
-    const d = await sf(`query($after:String){ products(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ ${PRODUCT_FIELDS} } } }`, { after });
+    const d = await sf(`query($after:String) ${ctx} { products(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ ${PRODUCT_FIELDS} } } }`, { after });
     products.push(...d.products.nodes);
     after = d.products.pageInfo.hasNextPage ? d.products.pageInfo.endCursor : null;
   } while (after);
-  const d = await sf(`{
+  const d = await sf(`query ${ctx} {
     shop { name description brand { logo { image { url } } }
-      privacyPolicy { handle title body } refundPolicy { handle title body }
-      shippingPolicy { handle title body } termsOfService { handle title body } }
-    collections(first: 50) { nodes { handle title descriptionHtml updatedAt seo { title description } image { url altText }
-      products(first: 250) { nodes { handle } } } }
-    pages(first: 50) { nodes { handle title body updatedAt seo { title description } } }
+      privacyPolicy { id handle title body } refundPolicy { id handle title body }
+      shippingPolicy { id handle title body } termsOfService { id handle title body } }
+    collections(first: 50) { nodes { id handle title descriptionHtml updatedAt seo { title description } image { url altText }
+      products(first: 250) { nodes { id } } } }
+    pages(first: 50) { nodes { id handle title body updatedAt seo { title description } } }
   }`);
   return { products, collections: d.collections.nodes, pages: d.pages.nodes, shop: d.shop };
 }
 
 // ---------- layout ----------
-function layout({ title, description, canonical, body, ogImage, jsonld = [], noindex = false, ogType = "website" }) {
+// ALT[key] = { en: "/products/x/", es: "/es/products/y/" } — used for hreflang + language switch.
+let ALT = {};
+function altLinks(key) {
+  const a = ALT[key];
+  if (!a) return "";
+  return LOCALES.filter((l) => a[l]).map((l) => `<link rel="alternate" hreflang="${l}" href="${esc(abs(a[l]))}">`).join("\n") +
+    (a.en ? `\n<link rel="alternate" hreflang="x-default" href="${esc(abs(a.en))}">` : "");
+}
+
+function layout({ key, title, description, canonical, body, ogImage, jsonld = [], noindex = false, ogType = "website" }) {
   const robots = PREVIEW || noindex ? `<meta name="robots" content="noindex, nofollow">` : "";
   const ld = jsonld.map((o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`).join("\n");
+  const other = L === "en" ? "es" : "en";
+  const switchHref = BASE + (ALT[key]?.[other] || lp("/", other));
   return `<!doctype html>
-<html lang="en">
+<html lang="${L}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(canonical)}">
+${altLinks(key)}
 ${robots}
 <meta property="og:site_name" content="Aerial Needs">
+<meta property="og:locale" content="${L === "es" ? "es_CO" : "en_US"}">
 <meta property="og:type" content="${ogType}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
@@ -106,80 +171,81 @@ ${robots}
 ${ogImage ? `<meta property="og:image" content="${esc(img(ogImage, 1200))}">` : ""}
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
-<link rel="icon" href="${u("/assets/favicon.svg")}" type="image/svg+xml">
-<link rel="stylesheet" href="${u("/assets/style.css")}?v=${BUILD_ID}">
+<link rel="icon" href="${BASE}/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="${BASE}/assets/style.css?v=${BUILD_ID}">
 ${ld}
 </head>
 <body>
-${header()}
+${header(switchHref)}
 <main id="main">${body}</main>
-${footer()}
+${footer(switchHref)}
 ${cartDrawer()}
-<script>window.AN=${JSON.stringify({ shop: cfg.shopDomain, token: cfg.storefrontToken, api: cfg.apiVersion, base: BASE })};</script>
-<script src="${u("/assets/cart.js")}?v=${BUILD_ID}" defer></script>
+<script>window.AN=${JSON.stringify({
+    shop: cfg.shopDomain, token: cfg.storefrontToken, api: cfg.apiVersion, base: BASE, prefix: PREFIX[L], lang: L,
+    t: { empty: t.empty, from: t.from, soldOut: t.soldOut, addToCart: t.addToCart, adding: t.adding, unavailable: t.unavailable, remove: t.remove, dec: t.dec, inc: t.inc, qty: t.qty, results: t.results, resultsPl: t.resultsPl },
+  })};</script>
+<script src="${BASE}/assets/cart.js?v=${BUILD_ID}" defer></script>
 </body>
 </html>`;
 }
 
-let NAV = [];
-let LOGO = "";
-function header() {
+function header(switchHref) {
   const links = NAV.map((n) => `<li><a href="${u(n.href)}">${esc(n.label)}</a></li>`).join("");
-  return `<a class="skip" href="#main">Skip to content</a>
+  const sw = `<li><a href="${esc(switchHref)}" hreflang="${L === "en" ? "es" : "en"}" class="lang">${esc(t.language)}</a></li>`;
+  return `<a class="skip" href="#main">${esc(t.skip)}</a>
 <header class="site-header">
   <div class="wrap header-row">
-    <details class="menu"><summary aria-label="Menu"><span></span><span></span><span></span></summary>
-      <nav class="menu-panel" aria-label="Main"><ul>${links}<li><a href="${u("/search/")}">Search</a></li></ul></nav></details>
-    <a class="logo" href="${u("/")}" aria-label="Aerial Needs home">${
+    <details class="menu"><summary aria-label="${esc(t.menu)}"><span></span><span></span><span></span></summary>
+      <nav class="menu-panel" aria-label="Main"><ul>${links}<li><a href="${u("/search/")}">${esc(t.search)}</a></li>${sw}</ul></nav></details>
+    <a class="logo" href="${u("/")}" aria-label="Aerial Needs">${
       LOGO ? `<img src="${esc(img(LOGO, 400))}" alt="Aerial Needs" width="200" height="50">` : `<span class="logo-a">AERIAL</span><span class="logo-n">NEEDS</span>`
     }</a>
     <nav class="desk-nav" aria-label="Main"><ul>${links}</ul></nav>
     <div class="header-tools">
-      <a href="${u("/search/")}" class="icon-btn" aria-label="Search"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
-      <button class="icon-btn cart-toggle" aria-label="Open cart"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 7h12l-1 13H7L6 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="cart-count" hidden>0</span></button>
+      <a href="${esc(switchHref)}" class="lang-btn" hreflang="${L === "en" ? "es" : "en"}">${L === "en" ? "ES" : "EN"}</a>
+      <a href="${u("/search/")}" class="icon-btn" aria-label="${esc(t.search)}"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="icon-btn cart-toggle" aria-label="${esc(t.openCart)}"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 7h12l-1 13H7L6 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="cart-count" hidden>0</span></button>
     </div>
   </div>
 </header>`;
 }
 
-let POLICIES = [];
-function footer() {
+function footer(switchHref) {
   const pol = POLICIES.map((p) => `<li><a href="${u(`/policies/${p.handle}/`)}">${esc(p.title)}</a></li>`).join("");
   const nav = NAV.map((n) => `<li><a href="${u(n.href)}">${esc(n.label)}</a></li>`).join("");
   return `<footer class="site-footer">
   <div class="wrap footer-grid">
-    <div><p class="foot-brand">AERIAL NEEDS</p><p>Built for Those Who Dare to Fly.</p>
-      <p class="muted">Ships to the United States, Colombia and Venezuela · flat $2.99 shipping · 9–14 day delivery.</p>
+    <div><p class="foot-brand">AERIAL NEEDS</p><p>${esc(t.tagline)}</p>
+      <p class="muted">${esc(t.shipsTo)}</p>
       <p><a href="https://www.instagram.com/aerialneeds.store/" rel="noopener">Instagram @aerialneeds.store</a></p></div>
-    <div><p class="foot-h">Shop</p><ul>${nav}</ul></div>
-    <div><p class="foot-h">Help</p><ul>${PAGE_LINKS.map((p) => `<li><a href="${u(p.href)}">${esc(p.label)}</a></li>`).join("")}${pol}</ul></div>
-    <div><p class="foot-h">Ship to</p>
-      <label class="sr" for="country">Country</label>
+    <div><p class="foot-h">${esc(t.shop)}</p><ul>${nav}</ul></div>
+    <div><p class="foot-h">${esc(t.help)}</p><ul>${PAGE_LINKS.map((p) => `<li><a href="${u(p.href)}">${esc(p.label)}</a></li>`).join("")}${pol}</ul></div>
+    <div><p class="foot-h">${esc(t.shipTo)}</p>
+      <label class="sr" for="country">${esc(t.country)}</label>
       <select id="country" class="country-select">
-        <option value="US">United States (USD)</option><option value="CO">Colombia (COP)</option><option value="VE">Venezuela (USD)</option>
-      </select></div>
+        <option value="US">${L === "es" ? "Estados Unidos (USD)" : "United States (USD)"}</option><option value="CO">Colombia (COP)</option><option value="VE">Venezuela (USD)</option>
+      </select>
+      <p><a href="${esc(switchHref)}" class="lang">${esc(t.language)}</a></p></div>
   </div>
   <div class="wrap copy">© ${new Date().getFullYear()} Aerial Needs · Ares Entertainment LLC</div>
 </footer>`;
 }
-let PAGE_LINKS = [];
 
 function cartDrawer() {
   return `<div class="cart-backdrop" hidden></div>
-<aside class="cart-drawer" aria-label="Cart" aria-hidden="true">
-  <div class="cart-head"><h2>Your cart</h2><button class="icon-btn cart-close" aria-label="Close cart">✕</button></div>
-  <div class="cart-lines"><p class="muted">Your cart is empty.</p></div>
-  <div class="cart-foot"><div class="cart-sub"><span>Subtotal</span><strong class="cart-total">$0.00</strong></div>
-    <p class="muted small">Shipping and taxes calculated at checkout.</p>
-    <a class="btn btn-primary cart-checkout" href="#" aria-disabled="true">Checkout</a></div>
+<aside class="cart-drawer" aria-label="${esc(t.cart)}" aria-hidden="true">
+  <div class="cart-head"><h2>${esc(t.cart)}</h2><button class="icon-btn cart-close" aria-label="${esc(t.close)}">✕</button></div>
+  <div class="cart-lines"><p class="muted">${esc(t.empty)}</p></div>
+  <div class="cart-foot"><div class="cart-sub"><span>${esc(t.subtotal)}</span><strong class="cart-total">$0.00</strong></div>
+    <p class="muted small">${esc(t.taxes)}</p>
+    <a class="btn btn-primary cart-checkout" href="#" aria-disabled="true">${esc(t.checkout)}</a></div>
 </aside>`;
 }
 
 // ---------- components ----------
 function priceHtml(p) {
   const min = p.priceRange.minVariantPrice, max = p.priceRange.maxVariantPrice;
-  const from = Number(max.amount) > Number(min.amount) ? "From " : "";
-  // Only show strike-through when compare-at is genuinely higher than the selling price.
+  const from = Number(max.amount) > Number(min.amount) ? t.from : "";
   const cmp = p.variants.nodes
     .filter((v) => v.compareAtPrice && Number(v.compareAtPrice.amount) > Number(v.price.amount))
     .map((v) => Number(v.compareAtPrice.amount));
@@ -194,7 +260,7 @@ function card(p, eager = false) {
     im
       ? `<img src="${esc(img(im.url, 500))}" srcset="${esc(srcset(im.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 280px" alt="${esc(im.altText || p.title)}" width="500" height="500" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
       : ""
-  }${p.availableForSale ? "" : `<span class="badge">Sold out</span>`}</div>
+  }${p.availableForSale ? "" : `<span class="badge">${esc(t.soldOut)}</span>`}</div>
   <p class="card-title">${esc(p.title)}</p>
   <p class="card-price">${priceHtml(p)}</p></a></li>`;
 }
@@ -206,18 +272,18 @@ function breadcrumbs(items) {
   const ld = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: abs(it.path) })),
+    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: abs(lp(it.path)) })),
   };
   return { html, ld };
 }
 
 // ---------- pages ----------
-function productPage(p, colByHandle) {
+function productPage(p, colById) {
   const path_ = `/products/${p.handle}/`;
-  const desc = p.seo?.description || clip(strip(p.descriptionHtml), 155) || `${p.title} from Aerial Needs.`;
+  const desc = p.seo?.description || clip(strip(p.descriptionHtml), 155) || `${p.title} — Aerial Needs.`;
   const title = p.seo?.title || `${p.title} | Aerial Needs`;
-  const mainCol = p.collections.nodes.map((c) => colByHandle[c.handle]).find((c) => c && c.handle !== "all");
-  const bc = breadcrumbs([{ name: "Home", path: "/" }, ...(mainCol ? [{ name: mainCol.title, path: `/collections/${mainCol.handle}/` }] : []), { name: p.title, path: path_ }]);
+  const mainCol = p.collections.nodes.map((c) => colById[c.id]).find((c) => c && c.handle !== "all");
+  const bc = breadcrumbs([{ name: t.home, path: "/" }, ...(mainCol ? [{ name: mainCol.title, path: `/collections/${mainCol.handle}/` }] : []), { name: p.title, path: path_ }]);
   const images = p.images.nodes.length ? p.images.nodes : p.featuredImage ? [p.featuredImage] : [];
   const realOptions = p.options.filter((o) => !(o.name === "Title" && o.optionValues.length === 1 && o.optionValues[0].name === "Default Title"));
   const firstAvail = p.variants.nodes.find((v) => v.availableForSale) || p.variants.nodes[0];
@@ -237,8 +303,9 @@ function productPage(p, colByHandle) {
     .map((im, i) =>
       `<li><img src="${esc(img(im.url, 800))}" srcset="${esc(srcset(im.url, [400, 800, 1200]))}" sizes="(max-width:900px) 100vw, 560px" alt="${esc(im.altText || p.title)}" width="${im.width || 800}" height="${im.height || 800}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></li>`)
     .join("");
-  const thumbs = images.length > 1 ? `<ul class="thumbs">${images.map((im, i) => `<li><button type="button" data-i="${i}" aria-label="Image ${i + 1}"><img src="${esc(img(im.url, 120))}" alt="" width="60" height="60" loading="lazy"></button></li>`).join("")}</ul>` : "";
+  const thumbs = images.length > 1 ? `<ul class="thumbs">${images.map((im, i) => `<li><button type="button" data-i="${i}" aria-label="${esc(t.image)} ${i + 1}"><img src="${esc(img(im.url, 120))}" alt="" width="60" height="60" loading="lazy"></button></li>`).join("")}</ul>` : "";
   const brand = p.vendor || "Aerial Needs";
+  const url = abs(lp(path_));
   const ld = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -247,10 +314,10 @@ function productPage(p, colByHandle) {
     image: images.slice(0, 6).map((i) => i.url),
     brand: { "@type": "Brand", name: brand },
     sku: p.variants.nodes[0]?.id.split("/").pop(),
-    url: abs(path_),
+    url,
     offers: p.variants.nodes.map((v) => ({
       "@type": "Offer",
-      url: abs(path_),
+      url,
       priceCurrency: v.price.currencyCode,
       price: Number(v.price.amount).toFixed(2),
       availability: v.availableForSale ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
@@ -265,7 +332,7 @@ function productPage(p, colByHandle) {
       hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "US", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 30, returnMethod: "https://schema.org/ReturnByMail", returnFees: "https://schema.org/ReturnShippingFees" },
     })),
   };
-  const related = mainCol ? mainCol._products.filter((x) => x.handle !== p.handle).slice(0, 4) : [];
+  const related = mainCol ? mainCol._products.filter((x) => x.id !== p.id).slice(0, 4) : [];
   const body = `<div class="wrap">${bc.html}
 <article class="pdp">
   <div class="pdp-media"><ul class="gallery">${gallery}</ul>${thumbs}</div>
@@ -275,166 +342,213 @@ function productPage(p, colByHandle) {
     <p class="pdp-price" aria-live="polite">${priceHtml(p)}</p>
     <form class="buy" data-product="${esc(p.id)}">
       ${opts}
-      <div class="qty-row"><label class="sr" for="qty">Quantity</label>
-        <div class="qty"><button type="button" data-q="-1" aria-label="Decrease">−</button><input id="qty" name="qty" type="number" min="1" value="1" inputmode="numeric"><button type="button" data-q="1" aria-label="Increase">+</button></div>
-        <button class="btn btn-primary add" type="submit" ${firstAvail.availableForSale ? "" : "disabled"}>${firstAvail.availableForSale ? "Add to cart" : "Sold out"}</button></div>
+      <div class="qty-row"><label class="sr" for="qty">${esc(t.qty)}</label>
+        <div class="qty"><button type="button" data-q="-1" aria-label="${esc(t.dec)}">−</button><input id="qty" name="qty" type="number" min="1" value="1" inputmode="numeric"><button type="button" data-q="1" aria-label="${esc(t.inc)}">+</button></div>
+        <button class="btn btn-primary add" type="submit" ${firstAvail.availableForSale ? "" : "disabled"}>${esc(firstAvail.availableForSale ? t.addToCart : t.soldOut)}</button></div>
       <input type="hidden" name="variant" value="${esc(firstAvail.id)}">
     </form>
     <script type="application/json" class="variants">${JSON.stringify(variantsJson).replace(/</g, "\\u003c")}</script>
-    <ul class="assure"><li>Flat $2.99 shipping</li><li>Delivery in 9–14 days</li><li>30-day returns</li></ul>
+    <ul class="assure">${t.assure.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
     <div class="rte">${cleanHtml(p.descriptionHtml)}</div>
   </div>
 </article>
-${related.length ? `<section class="related"><h2>More from ${esc(mainCol.title)}</h2><ul class="grid">${related.map((r) => card(r)).join("")}</ul></section>` : ""}
+${related.length ? `<section class="related"><h2>${esc(t.moreFrom)} ${esc(mainCol.title)}</h2><ul class="grid">${related.map((r) => card(r)).join("")}</ul></section>` : ""}
 </div>`;
-  return { path: path_, html: layout({ title, description: desc, canonical: abs(path_), body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld] }) };
+  return { key: p.id, path: path_, html: layout({ key: p.id, title, description: desc, canonical: url, body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld] }) };
 }
 
 function collectionPage(c) {
   const path_ = `/collections/${c.handle}/`;
-  const title = c.seo?.title || `${c.title} | Aerial Needs`;
-  const desc = c.seo?.description || clip(strip(c.descriptionHtml), 155) || `Shop ${c.title} at Aerial Needs.`;
-  const bc = breadcrumbs([{ name: "Home", path: "/" }, { name: c.title === "All" ? "All products" : c.title, path: path_ }]);
+  const name = c.handle === "all" ? t.allProducts : c.title;
+  const title = c.seo?.title || `${name} | Aerial Needs`;
+  const desc = c.seo?.description || clip(strip(c.descriptionHtml), 155) || `${name} — Aerial Needs.`;
+  const bc = breadcrumbs([{ name: t.home, path: "/" }, { name, path: path_ }]);
+  const url = abs(lp(path_));
   const ld = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: c.title,
-    url: abs(path_),
-    mainEntity: { "@type": "ItemList", itemListElement: c._products.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: abs(`/products/${p.handle}/`) })) },
+    name,
+    url,
+    mainEntity: { "@type": "ItemList", itemListElement: c._products.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: abs(lp(`/products/${p.handle}/`)) })) },
   };
   const body = `<div class="wrap">${bc.html}
-<header class="col-head"><h1>${esc(c.title === "All" ? "All products" : c.title)}</h1>${c.descriptionHtml ? `<div class="rte col-desc">${cleanHtml(c.descriptionHtml)}</div>` : ""}</header>
+<header class="col-head"><h1>${esc(name)}</h1>${c.descriptionHtml ? `<div class="rte col-desc">${cleanHtml(c.descriptionHtml)}</div>` : ""}</header>
 <ul class="grid">${c._products.map((p, i) => card(p, i < 4)).join("")}</ul></div>`;
-  return { path: path_, html: layout({ title, description: desc, canonical: abs(path_), body, ogImage: c.image?.url, jsonld: [ld, bc.ld] }) };
+  return { key: c.id, path: path_, html: layout({ key: c.id, title, description: desc, canonical: url, body, ogImage: c.image?.url, jsonld: [ld, bc.ld] }) };
 }
 
 function homePage(cols, colByHandle) {
   const show = cols.filter((c) => c.handle !== "all" && c._products.length);
   const kits = colByHandle["aerial-essentials"]?._products || [];
   const fire = colByHandle["fire-mecca-partnership"]?._products || [];
-  const featuredHandles = new Set(kits.map((k) => k.handle));
-  const best = (colByHandle["all"]?._products || []).filter((p) => !featuredHandles.has(p.handle)).slice(0, 8);
+  const kitIds = new Set(kits.map((k) => k.id));
+  const best = (colByHandle["all"]?._products || []).filter((p) => !kitIds.has(p.id)).slice(0, 8);
   const heroImg = colByHandle["aerial-essentials"]?.image?.url || show[0]?.image?.url;
+  const ch = (h) => colByHandle[h]?.handle || h;
   const body = `
 <section class="hero">
   ${heroImg ? `<img class="hero-img" src="${esc(img(heroImg, 1600))}" srcset="${esc(srcset(heroImg, [600, 1000, 1600]))}" sizes="100vw" alt="" fetchpriority="high">` : ""}
   <div class="wrap hero-txt">
-    <p class="eyebrow">Aerial · Circus · Fire</p>
-    <h1>ELEVATE YOUR PERFORMANCE</h1>
-    <p class="lead">Built for Those Who Dare to Fly. Wrist wraps, tape, grips, protection and fire gear chosen for aerial training.</p>
-    <p><a class="btn btn-primary" href="${u("/collections/all/")}">Shop all gear</a> <a class="btn btn-ghost" href="${u("/collections/aerial-essentials/")}">Training kits</a></p>
+    <p class="eyebrow">${esc(t.eyebrow)}</p>
+    <h1>${esc(t.hero)}</h1>
+    <p class="lead">${esc(t.lead)}</p>
+    <p><a class="btn btn-primary" href="${u(`/collections/${ch("all")}/`)}">${esc(t.shopAll)}</a> <a class="btn btn-ghost" href="${u(`/collections/${ch("aerial-essentials")}/`)}">${esc(t.kits)}</a></p>
   </div>
 </section>
 <div class="wrap">
-<section><h2 class="sec-h">Shop by category</h2>
+<section><h2 class="sec-h">${esc(t.byCat)}</h2>
 <ul class="cats">${show
     .map((c) => `<li><a href="${u(`/collections/${c.handle}/`)}">${c.image ? `<img src="${esc(img(c.image.url, 500))}" srcset="${esc(srcset(c.image.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 300px" alt="" width="500" height="500" loading="lazy">` : ""}<span>${esc(c.title)}</span></a></li>`)
     .join("")}</ul></section>
-${kits.length ? `<section><h2 class="sec-h">Aerial Essentials kits <small>Save up to 35%</small></h2><ul class="grid">${kits.map((p) => card(p)).join("")}</ul></section>` : ""}
-${best.length ? `<section><h2 class="sec-h">Training gear</h2><ul class="grid">${best.map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u("/collections/all/")}">View all</a></p></section>` : ""}
-${fire.length ? `<section class="fire"><h2 class="sec-h">Fire Mecca Partnership <small>American-made fire performance gear</small></h2><ul class="grid scroller">${fire.slice(0, 12).map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u("/collections/fire-mecca-partnership/")}">Shop Fire Mecca</a></p></section>` : ""}
+${kits.length ? `<section><h2 class="sec-h">${esc(t.kitsH)} <small>${esc(t.save)}</small></h2><ul class="grid">${kits.map((p) => card(p)).join("")}</ul></section>` : ""}
+${best.length ? `<section><h2 class="sec-h">${esc(t.gear)}</h2><ul class="grid">${best.map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u(`/collections/${ch("all")}/`)}">${esc(t.viewAll)}</a></p></section>` : ""}
+${fire.length ? `<section class="fire"><h2 class="sec-h">${esc(t.fireH)} <small>${esc(t.fireSub)}</small></h2><ul class="grid scroller">${fire.slice(0, 12).map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u(`/collections/${ch("fire-mecca-partnership")}/`)}">${esc(t.shopFire)}</a></p></section>` : ""}
 </div>`;
+  const home = abs(lp("/"));
   const ld = [
     { "@context": "https://schema.org", "@type": "Organization", name: "Aerial Needs", url: SITE_URL + "/", logo: LOGO || undefined, email: cfg.email, sameAs: ["https://www.instagram.com/aerialneeds.store/"] },
-    { "@context": "https://schema.org", "@type": "WebSite", name: "Aerial Needs", url: SITE_URL + "/", potentialAction: { "@type": "SearchAction", target: SITE_URL + "/search/?q={q}", "query-input": "required name=q" } },
+    { "@context": "https://schema.org", "@type": "WebSite", name: "Aerial Needs", url: home, inLanguage: L, potentialAction: { "@type": "SearchAction", target: home + "search/?q={q}", "query-input": "required name=q" } },
   ];
-  return { path: "/", html: layout({ title: cfg.homeTitle, description: cfg.homeDescription, canonical: abs("/"), body, ogImage: heroImg, jsonld: ld }) };
+  return { key: "home", path: "/", html: layout({ key: "home", title: cfg.home[L].title, description: cfg.home[L].description, canonical: home, body, ogImage: heroImg, jsonld: ld }) };
 }
 
-function simplePage({ path: p, title, heading, bodyHtml, description, noindex }) {
+function simplePage({ key, path: p, title, heading, bodyHtml, description, noindex }) {
   const body = `<div class="wrap narrow"><h1>${esc(heading)}</h1><div class="rte">${bodyHtml}</div></div>`;
-  return { path: p, html: layout({ title, description, canonical: abs(p), body, noindex }) };
+  return { key, path: p, html: layout({ key, title, description, canonical: abs(lp(p)), body, noindex }) };
 }
 
 function contactPage() {
-  const body = `<div class="wrap narrow"><h1>Contact us</h1>
-<p>Questions about sizing, orders, coach codes or studio partnerships? We answer in English and Spanish.</p>
-<p><a class="btn btn-primary" href="mailto:${esc(cfg.email)}">Email ${esc(cfg.email)}</a></p>
+  const body = `<div class="wrap narrow"><h1>${esc(t.contactH)}</h1>
+<p>${esc(t.contactP)}</p>
+<p><a class="btn btn-primary" href="mailto:${esc(cfg.email)}">${esc(t.email)} ${esc(cfg.email)}</a></p>
 <p>Instagram: <a href="https://www.instagram.com/aerialneeds.store/" rel="noopener">@aerialneeds.store</a></p>
-<p class="muted">Track an order or manage your account on our <a href="${esc(FALLBACK)}/account">account page</a>.</p></div>`;
-  return { path: "/pages/contact/", html: layout({ title: "Contact | Aerial Needs", description: "Contact Aerial Needs about orders, sizing, coach codes and studio partnerships.", canonical: abs("/pages/contact/"), body }) };
+<p class="muted">${esc(t.track)} <a href="${esc(FALLBACK)}/account">${esc(t.accountPage)}</a>.</p></div>`;
+  return { key: "contact", path: "/pages/contact/", html: layout({ key: "contact", title: `${t.contactH} | Aerial Needs`, description: t.contactDesc, canonical: abs(lp("/pages/contact/")), body }) };
 }
 
 function searchPage() {
-  const body = `<div class="wrap"><h1>Search</h1>
-<form class="search-form" role="search"><label class="sr" for="q">Search products</label><input id="q" name="q" type="search" placeholder="Wrist wraps, tape, poi…" autocomplete="off"></form>
+  const body = `<div class="wrap"><h1>${esc(t.search)}</h1>
+<form class="search-form" role="search"><label class="sr" for="q">${esc(t.searchProducts)}</label><input id="q" name="q" type="search" placeholder="${esc(t.searchP)}" autocomplete="off"></form>
 <p class="muted search-meta"></p><ul class="grid search-results"></ul></div>`;
-  return { path: "/search/", html: layout({ title: "Search | Aerial Needs", description: "Search Aerial Needs products.", canonical: abs("/search/"), body, noindex: true }) };
+  return { key: "search", path: "/search/", html: layout({ key: "search", title: `${t.search} | Aerial Needs`, description: t.searchDesc, canonical: abs(lp("/search/")), body, noindex: true }) };
 }
 
 function notFound() {
-  // GitHub Pages serves this for any unknown path. Known Shopify-only paths (account, unlisted
+  // GitHub Pages serves /404.html for any unknown path. Shopify-only paths (account, unlisted
   // products, old pages) are forwarded to the Shopify storefront so no link breaks.
-  const body = `<div class="wrap narrow"><h1>Page not found</h1><p>Sorry, we couldn't find that page.</p>
-<p><a class="btn btn-primary" href="${u("/collections/all/")}">Shop all gear</a></p></div>
+  const body = `<div class="wrap narrow"><h1>${esc(t.notFound)}</h1><p>${esc(t.notFoundP)}</p>
+<p><a class="btn btn-primary" href="${u("/collections/all/")}">${esc(t.shopAll)}</a></p></div>
 <script>(function(){var b=${JSON.stringify(BASE)},p=location.pathname;if(b&&p.indexOf(b)===0)p=p.slice(b.length);
-var fwd=/^\\/(account|cart|checkouts?|orders|tools|apps|policies|pages|products|collections|blogs|discount|services|a\\/)/;
+var fwd=/^(\\/es)?\\/(account|cart|checkouts?|orders|tools|apps|policies|pages|products|collections|blogs|discount|services|a\\/)/;
 if(fwd.test(p)&&!sessionStorage.getItem("an404"+p)){sessionStorage.setItem("an404"+p,1);location.replace(${JSON.stringify(FALLBACK)}+p+location.search+location.hash);}})();</script>`;
-  return { path: "/404.html", file: true, html: layout({ title: "Page not found | Aerial Needs", description: "Page not found.", canonical: abs("/"), body, noindex: true }) };
+  return { key: "404", path: "/404.html", file: true, html: layout({ key: "404", title: `${t.notFound} | Aerial Needs`, description: t.notFound, canonical: abs("/"), body, noindex: true }) };
 }
 
 // ---------- build ----------
-const BUILD_ID = Date.now().toString(36);
+function prepare(data) {
+  // Only list products that live in at least one collection; unlisted / direct-link products
+  // (sellers portal, AN Gafas…) are left to the Shopify fallback and stay out of Google.
+  const products = data.products.filter((p) => p.collections.nodes.length && !cfg.excludeProducts.includes(p.id) && !cfg.excludeProducts.includes(p.handle));
+  const byId = Object.fromEntries(products.map((p) => [p.id, p]));
+  const cols = data.collections.map((c) => ({ ...c, _products: c.products.nodes.map((n) => byId[n.id]).filter(Boolean) }));
+  const colById = Object.fromEntries(cols.map((c) => [c.id, c]));
+  // Stable (English) handle → collection, so config/nav can refer to collections by their English handle
+  const pages = data.pages.filter((p) => !cfg.excludePages.includes(p.id) && !cfg.excludePages.includes(p.handle));
+  const policies = ["refundPolicy", "shippingPolicy", "privacyPolicy", "termsOfService"].map((k) => data.shop[k]).filter((x) => x && x.body);
+  return { products, cols, colById, pages, policies, shop: data.shop };
+}
 
 async function main() {
   const fixIdx = process.argv.indexOf("--fixture");
-  const data = fixIdx > -1 ? JSON.parse(fs.readFileSync(process.argv[fixIdx + 1])) : await fetchAll();
-  const { shop } = data;
-  LOGO = shop.brand?.logo?.image?.url || "";
+  let raw;
+  if (fixIdx > -1) {
+    const f = JSON.parse(fs.readFileSync(process.argv[fixIdx + 1]));
+    raw = f.en ? f : { en: f, es: f };
+  } else {
+    raw = { en: await fetchLocale("en"), es: await fetchLocale("es") };
+  }
+  const D = { en: prepare(raw.en), es: prepare(raw.es) };
 
-  // Only list products that live in at least one collection; unlisted / direct-link products
-  // (sellers portal, AN Gafas…) are left to the Shopify fallback and stay out of Google.
-  const products = data.products.filter((p) => p.collections.nodes.length && !cfg.excludeProducts.includes(p.handle));
-  const byHandle = Object.fromEntries(products.map((p) => [p.handle, p]));
-  const cols = data.collections.map((c) => ({ ...c, _products: c.products.nodes.map((n) => byHandle[n.handle]).filter(Boolean) }));
-  const colByHandle = Object.fromEntries(cols.map((c) => [c.handle, c]));
-  // Keep the shop's nav order from config; skip empty collections.
-  NAV = cfg.nav.filter((n) => !n.collection || colByHandle[n.collection]?._products.length).map((n) => ({ label: n.label, href: n.href || `/collections/${n.collection}/` }));
-  POLICIES = ["refundPolicy", "shippingPolicy", "privacyPolicy", "termsOfService"].map((k) => shop[k]).filter((x) => x && x.body);
-  const pages = data.pages.filter((p) => !cfg.excludePages.includes(p.handle));
-  PAGE_LINKS = [...pages.filter((p) => p.handle !== "contact").map((p) => ({ label: p.title, href: `/pages/${p.handle}/` })), { label: "Contact", href: "/pages/contact/" }];
+  // English handle for each collection/page id (config refers to English handles; contact is excluded by handle in EN)
+  const enColHandle = Object.fromEntries(D.en.cols.map((c) => [c.id, c.handle]));
+  const enPageHandle = Object.fromEntries(raw.en.pages.map((p) => [p.id, p.handle]));
+  const enPolicyKey = (pol) => pol.id || pol.handle;
+  for (const loc of LOCALES) {
+    // The ES dataset can't use translated handles to apply config rules, so re-filter by English handle.
+    D[loc].pages = raw[loc].pages.filter((p) => !cfg.excludePages.includes(enPageHandle[p.id] || p.handle));
+    D[loc].colByEnHandle = Object.fromEntries(D[loc].cols.map((c) => [enColHandle[c.id] || c.handle, c]));
+  }
 
-  const out = [];
-  out.push(homePage(cols, colByHandle));
-  for (const c of cols) if (c._products.length) out.push(collectionPage(c));
-  for (const p of products) out.push(productPage(p, colByHandle));
-  for (const pg of pages.filter((p) => p.handle !== "contact"))
-    out.push(simplePage({ path: `/pages/${pg.handle}/`, title: pg.seo?.title || `${pg.title} | Aerial Needs`, heading: pg.title, bodyHtml: cleanHtml(pg.body), description: pg.seo?.description || clip(strip(pg.body), 155) }));
-  out.push(contactPage());
-  for (const pol of POLICIES)
-    out.push(simplePage({ path: `/policies/${pol.handle}/`, title: `${pol.title} | Aerial Needs`, heading: pol.title, bodyHtml: pol.body, description: `${pol.title} for Aerial Needs.` }));
-  out.push(searchPage());
-  out.push(notFound());
+  // Alternate-language map, keyed by Shopify id
+  ALT = {};
+  const addAlt = (key, loc, p) => ((ALT[key] ||= {})[loc] = lp(p, loc));
+  for (const loc of LOCALES) {
+    const d = D[loc];
+    addAlt("home", loc, "/"); addAlt("contact", loc, "/pages/contact/"); addAlt("search", loc, "/search/");
+    for (const p of d.products) addAlt(p.id, loc, `/products/${p.handle}/`);
+    for (const c of d.cols) if (c._products.length) addAlt(c.id, loc, `/collections/${c.handle}/`);
+    for (const pg of d.pages) if ((enPageHandle[pg.id] || pg.handle) !== "contact") addAlt(pg.id, loc, `/pages/${pg.handle}/`);
+    for (const pol of d.policies) addAlt(enPolicyKey(pol), loc, `/policies/${pol.handle}/`);
+  }
 
   fs.rmSync(OUT, { recursive: true, force: true });
-  for (const o of out) {
-    const file = o.file ? path.join(OUT, o.path) : path.join(OUT, o.path, "index.html");
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, o.html);
+  const written = [];
+  for (const loc of LOCALES) {
+    L = loc; t = T[loc];
+    const d = D[loc];
+    LOGO = d.shop.brand?.logo?.image?.url || "";
+    NAV = cfg.nav
+      .map((n) => ({ n, c: d.colByEnHandle[n.collection] }))
+      .filter(({ c }) => c && c._products.length)
+      .map(({ n, c }) => ({ label: n.label[loc] || n.label.en, href: `/collections/${c.handle}/` }));
+    POLICIES = d.policies;
+    const pages = d.pages.filter((p) => (enPageHandle[p.id] || p.handle) !== "contact");
+    PAGE_LINKS = [...pages.map((p) => ({ label: p.title, href: `/pages/${p.handle}/` })), { label: t.contact, href: "/pages/contact/" }];
+
+    const out = [];
+    out.push(homePage(d.cols, d.colByEnHandle));
+    for (const c of d.cols) if (c._products.length) out.push(collectionPage(c));
+    for (const p of d.products) out.push(productPage(p, d.colById));
+    for (const pg of pages)
+      out.push(simplePage({ key: pg.id, path: `/pages/${pg.handle}/`, title: pg.seo?.title || `${pg.title} | Aerial Needs`, heading: pg.title, bodyHtml: cleanHtml(pg.body), description: pg.seo?.description || clip(strip(pg.body), 155) }));
+    out.push(contactPage());
+    for (const pol of POLICIES)
+      out.push(simplePage({ key: enPolicyKey(pol), path: `/policies/${pol.handle}/`, title: `${pol.title} | Aerial Needs`, heading: pol.title, bodyHtml: pol.body, description: `${pol.title} ${t.policyFor}` }));
+    out.push(searchPage());
+    if (loc === "en") out.push(notFound());
+
+    for (const o of out) {
+      const rel = o.file ? o.path : lp(o.path) + "index.html";
+      const file = path.join(OUT, rel);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, o.html);
+      written.push({ ...o, loc, url: lp(o.path) });
+    }
+
+    // Search index per language (loaded only on the search page)
+    fs.mkdirSync(path.join(OUT, "assets"), { recursive: true });
+    fs.writeFileSync(path.join(OUT, "assets", `search-${loc}.json`), JSON.stringify(d.products.map((p) => ({
+      h: p.handle, t: p.title, k: [p.productType, p.vendor, ...p.tags, ...p.collections.nodes.map((c) => d.colById[c.id]?.title || "")].join(" "),
+      i: p.featuredImage?.url || "", p: money(p.priceRange.minVariantPrice), f: Number(p.priceRange.maxVariantPrice.amount) > Number(p.priceRange.minVariantPrice.amount),
+    }))));
   }
   fs.cpSync("assets", path.join(OUT, "assets"), { recursive: true });
 
-  // Search index (small, loaded only on /search/)
-  fs.writeFileSync(path.join(OUT, "assets", "search.json"), JSON.stringify(products.map((p) => ({
-    h: p.handle, t: p.title, k: [p.productType, p.vendor, ...p.tags, ...p.collections.nodes.map((c) => colByHandle[c.handle]?.title || "")].join(" "),
-    i: p.featuredImage?.url || "", p: money(p.priceRange.minVariantPrice), f: Number(p.priceRange.maxVariantPrice.amount) > Number(p.priceRange.minVariantPrice.amount),
-  }))));
-
-  // Sitemap + robots
-  const indexable = out.filter((o) => !o.file && o.path !== "/search/");
-  const lastmod = (o) => {
-    const m = o.path.match(/^\/(products|collections|pages)\/([^/]+)\//);
-    const src = m && (m[1] === "products" ? byHandle[m[2]] : m[1] === "collections" ? colByHandle[m[2]] : pages.find((p) => p.handle === m[2]));
-    return (src?.updatedAt || new Date().toISOString()).slice(0, 10);
-  };
+  // Sitemap (with hreflang alternates) + robots
+  const indexable = written.filter((o) => !o.file && o.key !== "search");
+  const updated = {};
+  for (const loc of LOCALES) for (const x of [...D[loc].products, ...D[loc].cols, ...D[loc].pages]) updated[x.id] = x.updatedAt;
+  const xhtml = (key) =>
+    LOCALES.filter((l) => ALT[key]?.[l]).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${abs(ALT[key][l])}"/>`).join("");
   fs.writeFileSync(path.join(OUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${indexable.map((o) => `<url><loc>${abs(o.path)}</loc><lastmod>${lastmod(o)}</lastmod></url>`).join("\n")}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${indexable.map((o) => `<url><loc>${abs(o.url)}</loc><lastmod>${(updated[o.key] || new Date().toISOString()).slice(0, 10)}</lastmod>${xhtml(o.key)}</url>`).join("\n")}
 </urlset>`);
-  fs.writeFileSync(path.join(OUT, "robots.txt"), PREVIEW ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\nDisallow: /search/\n\nSitemap: ${abs("/sitemap.xml")}\n`);
+  fs.writeFileSync(path.join(OUT, "robots.txt"), PREVIEW ? "User-agent: *\nDisallow: /\n" : `User-agent: *\nAllow: /\nDisallow: /search/\nDisallow: /es/search/\n\nSitemap: ${abs("/sitemap.xml")}\n`);
   if (!PREVIEW && cfg.customDomain) fs.writeFileSync(path.join(OUT, "CNAME"), cfg.customDomain + "\n");
   fs.writeFileSync(path.join(OUT, ".nojekyll"), "");
-  console.log(`Built ${out.length} pages (${products.length} products, ${cols.filter((c) => c._products.length).length} collections) → dist/  preview=${PREVIEW} base="${BASE}"`);
+  const n = (loc) => written.filter((w) => w.loc === loc).length;
+  console.log(`Built ${written.length} pages (EN ${n("en")}, ES ${n("es")}; ${D.en.products.length} products) → dist/  preview=${PREVIEW} base="${BASE}"`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

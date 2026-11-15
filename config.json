@@ -8,35 +8,54 @@
   "preview": true,
   "fallbackOrigin": "https://www.aerialneeds.com",
   "email": "miguelarana@aerialneeds.com",
-  "homeTitle": "Aerial Needs | Circus & Fire Performance Equipment",
-  "homeDescription": "Wrist wraps, tape, grips and protection for aerial silks, straps and lyra training. Shop training kits and fire performance gear at Aerial Needs.",
   "nav": [
     {
-      "label": "Shop all",
+      "label": {
+        "en": "Shop all",
+        "es": "Todo"
+      },
       "collection": "all"
     },
     {
-      "label": "Kits",
+      "label": {
+        "en": "Kits",
+        "es": "Kits"
+      },
       "collection": "aerial-essentials"
     },
     {
-      "label": "Grip & Tape",
+      "label": {
+        "en": "Grip & Tape",
+        "es": "Grip y cintas"
+      },
       "collection": "grip-and-tape"
     },
     {
-      "label": "Aerial Guard",
+      "label": {
+        "en": "Aerial Guard",
+        "es": "Aerial Guard"
+      },
       "collection": "aerial-guard-collection"
     },
     {
-      "label": "Fitness & Stretch",
+      "label": {
+        "en": "Fitness & Stretch",
+        "es": "Fitness y estiramiento"
+      },
       "collection": "fitness-and-stretch"
     },
     {
-      "label": "Circus & Aerial",
+      "label": {
+        "en": "Circus & Aerial",
+        "es": "Circo y aéreos"
+      },
       "collection": "circus-aerial-arts"
     },
     {
-      "label": "Fire Mecca",
+      "label": {
+        "en": "Fire Mecca",
+        "es": "Fire Mecca"
+      },
       "collection": "fire-mecca-partnership"
     }
   ],
@@ -45,5 +64,15 @@
     "contact",
     "data-sharing-opt-out",
     "sellers-portal2026"
-  ]
+  ],
+  "home": {
+    "en": {
+      "title": "Aerial Needs | Circus & Fire Performance Equipment",
+      "description": "Wrist wraps, tape, grips and protection for aerial silks, straps and lyra training. Shop training kits and fire performance gear at Aerial Needs."
+    },
+    "es": {
+      "title": "Aerial Needs | Equipo para aéreos, circo y fuego",
+      "description": "Muñequeras, cintas, grips y protección para entrenar telas, straps y lira. Compra kits de entrenamiento y equipo de fuego en Aerial Needs."
+    }
+  }
 }
