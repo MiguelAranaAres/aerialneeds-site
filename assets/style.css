@@ -31,7 +31,8 @@ ul{padding:0;margin:0;list-style:none}
 .logo-a{font:700 1.35rem/1 var(--display);letter-spacing:.12em;color:var(--mag)}
 .logo-n{font:300 1.35rem/1 var(--display);letter-spacing:.18em}
 .desk-nav{margin-left:auto}
-.desk-nav ul{display:flex;gap:20px}
+.desk-nav ul{display:flex;gap:18px}
+.desk-nav a{white-space:nowrap}
 .desk-nav a,.menu-panel a{text-decoration:none;font:500 .82rem/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
 .header-tools{display:flex;gap:6px;margin-left:12px}
 .icon-btn{background:none;border:0;color:var(--text);padding:8px;cursor:pointer;position:relative;display:inline-flex}
@@ -42,7 +43,7 @@ ul{padding:0;margin:0;list-style:none}
 .menu summary span{height:2px;background:var(--text);border-radius:2px}
 .menu-panel{position:absolute;left:0;right:0;top:68px;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 20px 20px}
 .menu-panel li a{display:block;padding:14px 0;border-bottom:1px solid var(--line)}
-@media (max-width:980px){.desk-nav{display:none}.menu{display:block}.header-tools{margin-left:auto}.logo{margin:0 auto 0 8px}}
+@media (max-width:1180px){.desk-nav{display:none}.menu{display:block}.header-tools{margin-left:auto}.logo{margin:0 auto 0 8px}}
 
 /* buttons */
 .btn{display:inline-block;padding:13px 26px;border-radius:99px;font:600 .85rem/1 var(--display);letter-spacing:.1em;text-transform:uppercase;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:.15s}
