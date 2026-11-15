@@ -4,8 +4,8 @@
   "storefrontToken": "83f8c43777b896c75361762aba9e9f1b",
   "siteUrl": "https://www.aerialneeds.com",
   "customDomain": "www.aerialneeds.com",
-  "preview": "auto",
-  "fallbackOrigin": "https://www.aerialneeds.com",
+  "preview": false,
+  "fallbackOrigin": "https://shop.aerialneeds.com",
   "email": "miguelarana@aerialneeds.com",
   "nav": [
     {
