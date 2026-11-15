@@ -4,21 +4,46 @@
   "storefrontToken": "83f8c43777b896c75361762aba9e9f1b",
   "siteUrl": "https://www.aerialneeds.com",
   "customDomain": "www.aerialneeds.com",
-  "basePath": "",
-  "preview": false,
+  "basePath": "/aerialneeds-site",
+  "preview": true,
   "fallbackOrigin": "https://www.aerialneeds.com",
   "email": "miguelarana@aerialneeds.com",
   "homeTitle": "Aerial Needs | Circus & Fire Performance Equipment",
   "homeDescription": "Wrist wraps, tape, grips and protection for aerial silks, straps and lyra training. Shop training kits and fire performance gear at Aerial Needs.",
   "nav": [
-    { "label": "Shop all", "collection": "all" },
-    { "label": "Kits", "collection": "aerial-essentials" },
-    { "label": "Grip & Tape", "collection": "grip-and-tape" },
-    { "label": "Aerial Guard", "collection": "aerial-guard-collection" },
-    { "label": "Fitness & Stretch", "collection": "fitness-and-stretch" },
-    { "label": "Circus & Aerial", "collection": "circus-aerial-arts" },
-    { "label": "Fire Mecca", "collection": "fire-mecca-partnership" }
+    {
+      "label": "Shop all",
+      "collection": "all"
+    },
+    {
+      "label": "Kits",
+      "collection": "aerial-essentials"
+    },
+    {
+      "label": "Grip & Tape",
+      "collection": "grip-and-tape"
+    },
+    {
+      "label": "Aerial Guard",
+      "collection": "aerial-guard-collection"
+    },
+    {
+      "label": "Fitness & Stretch",
+      "collection": "fitness-and-stretch"
+    },
+    {
+      "label": "Circus & Aerial",
+      "collection": "circus-aerial-arts"
+    },
+    {
+      "label": "Fire Mecca",
+      "collection": "fire-mecca-partnership"
+    }
   ],
   "excludeProducts": [],
-  "excludePages": ["contact", "data-sharing-opt-out", "sellers-portal2026"]
+  "excludePages": [
+    "contact",
+    "data-sharing-opt-out",
+    "sellers-portal2026"
+  ]
 }
