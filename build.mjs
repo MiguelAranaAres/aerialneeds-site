@@ -637,6 +637,15 @@ async function main() {
   }
   fs.cpSync("assets", path.join(OUT, "assets"), { recursive: true });
 
+  // Old URLs → new URLs (static redirect pages; GitHub Pages has no server-side redirects)
+  for (const [from, to] of Object.entries(cfg.redirects || {})) {
+    for (const loc of LOCALES) {
+      const target = BASE + lp(to, loc), file = path.join(OUT, lp(from, loc), "index.html");
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `<!doctype html><html><head><meta charset="utf-8"><title>Moved</title><link rel="canonical" href="${abs(lp(to, loc))}"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=${target}"><script>location.replace(${JSON.stringify(target)}+location.search+location.hash)</script></head><body><a href="${target}">${target}</a></body></html>`);
+    }
+  }
+
   // Sitemap (with hreflang alternates) + robots
   const indexable = written.filter((o) => !o.file && o.key !== "search");
   const updated = {};
