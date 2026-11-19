@@ -20,7 +20,7 @@
         "en": "Kits",
         "es": "Kits"
       },
-      "collection": "aerial-essentials"
+      "collection": "aerial-training-kits"
     },
     {
       "label": {
@@ -108,6 +108,7 @@
     "/blogs/news/": "/guides/",
     "/blogs/news/grip-strength-for-aerialists-and-athletes-build-it-train-it-dont-fake-it/": "/guides/",
     "/blogs/noticias/": "/guides/",
-    "/blogs/noticias/grip-strength-for-aerialists-and-athletes-build-it-train-it-dont-fake-it/": "/guides/"
+    "/blogs/noticias/grip-strength-for-aerialists-and-athletes-build-it-train-it-dont-fake-it/": "/guides/",
+    "/collections/aerial-essentials/": "/collections/aerial-training-kits/"
   }
 }

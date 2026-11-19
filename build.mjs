@@ -447,11 +447,11 @@ function collectionPage(c) {
 
 function homePage(cols, colByHandle) {
   const show = cols.filter((c) => c.handle !== "all" && c._products.length);
-  const kits = colByHandle["aerial-essentials"]?._products || [];
+  const kits = colByHandle["aerial-training-kits"]?._products || [];
   const fire = colByHandle["fire-mecca-partnership"]?._products || [];
   const kitIds = new Set(kits.map((k) => k.id));
   const best = (colByHandle["all"]?._products || []).filter((p) => !kitIds.has(p.id)).slice(0, 8);
-  const heroImg = colByHandle["aerial-essentials"]?.image?.url || show[0]?.image?.url;
+  const heroImg = colByHandle["aerial-training-kits"]?.image?.url || show[0]?.image?.url;
   const ch = (h) => colByHandle[h]?.handle || h;
   const body = `
 <section class="hero">
@@ -460,7 +460,7 @@ function homePage(cols, colByHandle) {
     <p class="eyebrow">${esc(t.eyebrow)}</p>
     <h1>${esc(t.hero)}</h1>
     <p class="lead">${esc(t.lead)}</p>
-    <p><a class="btn btn-primary" href="${u(`/collections/${ch("all")}/`)}">${esc(t.shopAll)}</a> <a class="btn btn-ghost" href="${u(`/collections/${ch("aerial-essentials")}/`)}">${esc(t.kits)}</a></p>
+    <p><a class="btn btn-primary" href="${u(`/collections/${ch("all")}/`)}">${esc(t.shopAll)}</a> <a class="btn btn-ghost" href="${u(`/collections/${ch("aerial-training-kits")}/`)}">${esc(t.kits)}</a></p>
   </div>
 </section>
 <div class="wrap">
