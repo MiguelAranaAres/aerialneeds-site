@@ -83,7 +83,7 @@ const T = {
     ],
     aboutH: "Built by an aerialist", aboutP: "Aerial Needs was started by Miguel Arana, an aerialist and circus coach who has spent his career in the air.", aboutLink: "Our story",
     coachH: "Coaches & studios", coachP: "Ask about our coach and studio program for you and your students.", coachLink: "Contact us",
-    heroAlt: "Aerial training kits with wrist wraps, tape, chalk and a carry bag", guides: "Guides", guidesH: "Training guides", guidesDesc: "Short, practical guides to aerial training gear from Aerial Needs.", shopGear: "Shop the gear", read: "Read the guide",
+    heroAlt: "Aerial training gear: wrist wraps, tape, bands and protective sleeves", guides: "Guides", guidesH: "Training guides", guidesDesc: "Short, practical guides to aerial training gear from Aerial Needs.", shopGear: "Shop the gear", read: "Read the guide",
     policyFor: "for Aerial Needs.",
   },
   es: {
@@ -122,7 +122,7 @@ const T = {
     ],
     aboutH: "Creado por un artista aéreo", aboutP: "Aerial Needs fue creado por Miguel Arana, artista aéreo y coach de circo con toda una carrera en el aire.", aboutLink: "Nuestra historia",
     coachH: "Coaches y estudios", coachP: "Pregunta por nuestro programa para coaches y estudios, para ti y tus alumnos.", coachLink: "Contáctanos",
-    heroAlt: "Kits de entrenamiento aéreo con muñequeras, cinta, magnesio y bolso", guides: "Guías", guidesH: "Guías de entrenamiento", guidesDesc: "Guías cortas y prácticas sobre equipo de entrenamiento aéreo, por Aerial Needs.", shopGear: "Compra el equipo", read: "Leer la guía",
+    heroAlt: "Equipo de entrenamiento aéreo: muñequeras, cinta, bandas y protecciones", guides: "Guías", guidesH: "Guías de entrenamiento", guidesDesc: "Guías cortas y prácticas sobre equipo de entrenamiento aéreo, por Aerial Needs.", shopGear: "Compra el equipo", read: "Leer la guía",
     policyFor: "de Aerial Needs.",
   },
 };
@@ -474,7 +474,7 @@ function homePage(cols, colByHandle) {
   const ch = (h) => colByHandle[h]?.handle || h;
   const body = `
 <section class="hero">
-  ${heroImg ? `<img class="hero-img" src="${esc(img(heroImg, 1600))}" srcset="${esc(srcset(heroImg, [600, 1000, 1600]))}" sizes="100vw" alt="${esc(t.heroAlt)}" fetchpriority="high">` : ""}
+  ${heroImg ? `<img class="hero-img" src="${esc(img(heroImg, 1600))}" srcset="${esc(srcset(heroImg, [600, 1000, 1600]))}" sizes="100vw" alt="${esc(colByHandle["aerial-training-kits"]?.image?.altText || t.heroAlt)}" fetchpriority="high">` : ""}
   <div class="wrap hero-txt">
     <p class="eyebrow">${esc(t.eyebrow)}</p>
     <h1>${esc(t.hero)}</h1>
