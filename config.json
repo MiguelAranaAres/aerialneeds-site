@@ -109,5 +109,57 @@
     "/blogs/noticias/": "/guides/",
     "/blogs/noticias/grip-strength-for-aerialists-and-athletes-build-it-train-it-dont-fake-it/": "/guides/",
     "/collections/aerial-essentials/": "/collections/aerial-training-kits/"
-  }
+  },
+  "ga4Id": "G-4C1FCBBERE",
+  "metaPixelId": "",
+  "unlistedProducts": [
+    "myopia-polarized-magnet-sunglasses-women-men-clip-on-glasses-square-optic-spectacle-6-in-1-eyeglass-frames-0-5-to-10",
+    "zd-original-spider-man-4inch-green-goblin-doctor-octopus-venom-action-figures-miles-gwen-electro-scarlet-spider-2099-rhino-toys",
+    "technical-1361-1639pcs-1-8-scale-sf24-rb20-racing-car-moc-replica-exclusive-diy-assembly-advanced-construction-kit-birthday-gift",
+    "lego-harry-potter-hogwarts™-castle-charms-class-3-characters-building-kit-collectible-toy-for-ages-8-and-up-76442-204pieces",
+    "lego-speed-champions-ferrari-sf-24-f1®-race-car-77242-oracle-red-bull-racing-rb20-f1®-77243-aston-martin-aramco-f1®-amr24-77245",
+    "lego-harry-potter-hogwarts-moment-defence-class-76397-building-kit-classroom-playset-for-ages-8-christmas-gift-257-pieces",
+    "lego®-technic™-john-deere-1470h-wheeled-harvester-42218-for-boys-and-girls-7-years-old-and-up-117-pieces",
+    "lego®-76308-marvel-spider-man-mech-vs-anti-venom-buildable-toy-for-boys-and-girls-107-pieces-birthday-gift"
+  ],
+  "directPages": [
+    {
+      "handle": "sellers-portal2026",
+      "noindex": true,
+      "products": [
+        "zd-original-spider-man-4inch-green-goblin-doctor-octopus-venom-action-figures-miles-gwen-electro-scarlet-spider-2099-rhino-toys"
+      ],
+      "en": {
+        "title": "Sellers portal",
+        "description": "Selected collectibles available by direct link.",
+        "html": "<p>Explore our selected collectibles. Choose your character and shipping origin on the product page.</p>"
+      },
+      "es": {
+        "title": "Portal de vendedores",
+        "description": "Coleccionables seleccionados disponibles por enlace directo.",
+        "html": "<p>Explora nuestros coleccionables seleccionados. Elige tu personaje y el origen del envío en la página del producto.</p>"
+      }
+    },
+    {
+      "handle": "gafasan",
+      "noindex": true,
+      "brand": "AN Gafas",
+      "style": "background:#F7F3EB;color:#111;padding:48px 24px;border-radius:6px;border-top:3px solid #B79A6A",
+      "products": [
+        "myopia-polarized-magnet-sunglasses-women-men-clip-on-glasses-square-optic-spectacle-6-in-1-eyeglass-frames-0-5-to-10"
+      ],
+      "en": {
+        "eyebrow": "AN Gafas by Aerial Needs",
+        "title": "AN Gafas",
+        "description": "Square frames with interchangeable magnetic clips, from the office to your plans outdoors.",
+        "html": "<p><em>Your style, in a different light.</em></p><p>Square frames with interchangeable magnetic clips, made to go from the office or campus to your plans outdoors.</p>"
+      },
+      "es": {
+        "eyebrow": "AN Gafas by Aerial Needs",
+        "title": "AN Gafas",
+        "description": "Monturas cuadradas con clips magnéticos intercambiables, de la oficina a tus planes al aire libre.",
+        "html": "<p><em>Tu estilo, bajo otra luz.</em></p><p>Monturas cuadradas con clips magnéticos intercambiables, pensadas para pasar de la oficina o la universidad a tus planes al aire libre.</p>"
+      }
+    }
+  ]
 }

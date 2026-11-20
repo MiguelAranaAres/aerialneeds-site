@@ -94,7 +94,18 @@
     return p.then(function (r) {
       if (r.userErrors && r.userErrors.length) throw new Error(r.userErrors[0].message);
       setCart(r.cart);
+      track(variantId, qty);
     });
+  }
+
+  // Analytics: report add-to-cart to GA4 / Meta Pixel when they are loaded on the page
+  function track(variantId, qty) {
+    try {
+      var title = (document.querySelector(".pdp-info h1") || {}).textContent || "";
+      var item = { item_id: String(variantId).split("/").pop(), item_name: title.trim(), quantity: qty };
+      if (window.gtag) window.gtag("event", "add_to_cart", { items: [item] });
+      if (window.fbq) window.fbq("track", "AddToCart", { content_ids: [item.item_id], content_type: "product" });
+    } catch (e) {}
   }
 
   function updateLine(lineId, qty) {

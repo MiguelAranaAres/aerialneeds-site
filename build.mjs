@@ -83,7 +83,7 @@ const T = {
     ],
     aboutH: "Built by an aerialist", aboutP: "Aerial Needs was started by Miguel Arana, an aerialist and circus coach who has spent his career in the air.", aboutLink: "Our story",
     coachH: "Coaches & studios", coachP: "Ask about our coach and studio program for you and your students.", coachLink: "Contact us",
-    guides: "Guides", guidesH: "Training guides", guidesDesc: "Short, practical guides to aerial training gear from Aerial Needs.", shopGear: "Shop the gear", read: "Read the guide",
+    heroAlt: "Aerial training kits with wrist wraps, tape, chalk and a carry bag", guides: "Guides", guidesH: "Training guides", guidesDesc: "Short, practical guides to aerial training gear from Aerial Needs.", shopGear: "Shop the gear", read: "Read the guide",
     policyFor: "for Aerial Needs.",
   },
   es: {
@@ -122,7 +122,7 @@ const T = {
     ],
     aboutH: "Creado por un artista aéreo", aboutP: "Aerial Needs fue creado por Miguel Arana, artista aéreo y coach de circo con toda una carrera en el aire.", aboutLink: "Nuestra historia",
     coachH: "Coaches y estudios", coachP: "Pregunta por nuestro programa para coaches y estudios, para ti y tus alumnos.", coachLink: "Contáctanos",
-    guides: "Guías", guidesH: "Guías de entrenamiento", guidesDesc: "Guías cortas y prácticas sobre equipo de entrenamiento aéreo, por Aerial Needs.", shopGear: "Compra el equipo", read: "Leer la guía",
+    heroAlt: "Kits de entrenamiento aéreo con muñequeras, cinta, magnesio y bolso", guides: "Guías", guidesH: "Guías de entrenamiento", guidesDesc: "Guías cortas y prácticas sobre equipo de entrenamiento aéreo, por Aerial Needs.", shopGear: "Compra el equipo", read: "Leer la guía",
     policyFor: "de Aerial Needs.",
   },
 };
@@ -192,7 +192,14 @@ async function fetchLocale(lang) {
       products(first: 250) { nodes { id } } } }
     pages(first: 50) { nodes { id handle title body updatedAt seo { title description } } }
   }`);
-  return { products, collections: d.collections.nodes, pages: d.pages.nodes, shop: d.shop };
+  // Unlisted, direct-link-only products (AN Gafas, sellers portal…) are fetched one by one by handle.
+  const unlisted = [];
+  for (const h of cfg.unlistedProducts || []) {
+    const x = await sf(`query($h:String!) ${ctx} { product(handle:$h){ ${PRODUCT_FIELDS} } }`, { h });
+    if (x.product) unlisted.push(x.product);
+    else console.warn("Unlisted product not found on the Headless channel:", h);
+  }
+  return { products, unlisted, collections: d.collections.nodes, pages: d.pages.nodes, shop: d.shop };
 }
 
 // ---------- layout ----------
@@ -203,6 +210,17 @@ function altLinks(key) {
   if (!a) return "";
   return LOCALES.filter((l) => a[l]).map((l) => `<link rel="alternate" hreflang="${l}" href="${esc(abs(a[l]))}">`).join("\n") +
     (a.en ? `\n<link rel="alternate" hreflang="x-default" href="${esc(abs(a.en))}">` : "");
+}
+
+function analytics() {
+  if (PREVIEW) return "";
+  const ga = cfg.ga4Id, px = cfg.metaPixelId;
+  const checkoutHost = new URL(cfg.checkoutOrigin).hostname;
+  return [
+    ga ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${esc(ga)}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config",${JSON.stringify(ga)},{linker:{domains:[${JSON.stringify(new URL(SITE_URL).hostname)},${JSON.stringify(checkoutHost)}]}});</script>` : "",
+    px ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");fbq("init",${JSON.stringify(px)});fbq("track","PageView");</script>` : "",
+  ].filter(Boolean).join("\n");
 }
 
 function layout({ key, title, description, canonical, body, ogImage, jsonld = [], noindex = false, ogType = "website" }) {
@@ -232,6 +250,7 @@ ${ogImage ? `<meta property="og:image" content="${esc(img(ogImage, 1200))}">` : 
 <link rel="icon" href="${BASE}/assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="${BASE}/assets/style.css?v=${BUILD_ID}">
 ${ld}
+${analytics()}
 </head>
 <body>
 ${header(switchHref)}
@@ -337,7 +356,7 @@ function breadcrumbs(items) {
 }
 
 // ---------- pages ----------
-function productPage(p, colById) {
+function productPage(p, colById, { noindex = false } = {}) {
   const path_ = `/products/${p.handle}/`;
   const desc = p.seo?.description || clip(strip(p.descriptionHtml), 155) || `${p.title} — Aerial Needs.`;
   const title = p.seo?.title || `${p.title} | Aerial Needs`;
@@ -362,7 +381,7 @@ function productPage(p, colById) {
     .map((im, i) =>
       `<li><img src="${esc(img(im.url, 800))}" srcset="${esc(srcset(im.url, [400, 800, 1200]))}" sizes="(max-width:900px) 100vw, 560px" alt="${esc(im.altText || p.title)}" width="${im.width || 800}" height="${im.height || 800}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></li>`)
     .join("");
-  const thumbs = images.length > 1 ? `<ul class="thumbs">${images.map((im, i) => `<li><button type="button" data-i="${i}" aria-label="${esc(t.image)} ${i + 1}"><img src="${esc(img(im.url, 120))}" alt="" width="60" height="60" loading="lazy"></button></li>`).join("")}</ul>` : "";
+  const thumbs = images.length > 1 ? `<ul class="thumbs">${images.map((im, i) => `<li><button type="button" data-i="${i}" aria-label="${esc(t.image)} ${i + 1}"><img src="${esc(img(im.url, 120))}" alt="${esc(im.altText || p.title)}" width="60" height="60" loading="lazy"></button></li>`).join("")}</ul>` : "";
   const brand = p.vendor || "Aerial Needs";
   const own = brand === "Aerial Needs"; // partner products (Fire Mecca) ship on their own terms
   const faqs = t.faq.filter((f) => own || !f[2]);
@@ -421,7 +440,7 @@ function productPage(p, colById) {
 <div class="sticky-buy" hidden><div class="sb-txt"><strong>${esc(p.title)}</strong><span class="sb-price"></span></div><button class="btn btn-primary" type="submit" form="buy"></button></div>
 ${related.length ? `<section class="related"><h2>${esc(t.moreFrom)} ${esc(mainCol.title)}</h2><ul class="grid">${related.map((r) => card(r)).join("")}</ul></section>` : ""}
 </div>`;
-  return { key: p.id, path: path_, html: layout({ key: p.id, title, description: desc, canonical: url, body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld, faqLd] }) };
+  return { key: p.id, path: path_, noindex, html: layout({ key: p.id, title, description: desc, canonical: url, body, ogImage: images[0]?.url, ogType: "product", jsonld: [ld, bc.ld, faqLd], noindex }) };
 }
 
 function collectionPage(c) {
@@ -455,7 +474,7 @@ function homePage(cols, colByHandle) {
   const ch = (h) => colByHandle[h]?.handle || h;
   const body = `
 <section class="hero">
-  ${heroImg ? `<img class="hero-img" src="${esc(img(heroImg, 1600))}" srcset="${esc(srcset(heroImg, [600, 1000, 1600]))}" sizes="100vw" alt="" fetchpriority="high">` : ""}
+  ${heroImg ? `<img class="hero-img" src="${esc(img(heroImg, 1600))}" srcset="${esc(srcset(heroImg, [600, 1000, 1600]))}" sizes="100vw" alt="${esc(t.heroAlt)}" fetchpriority="high">` : ""}
   <div class="wrap hero-txt">
     <p class="eyebrow">${esc(t.eyebrow)}</p>
     <h1>${esc(t.hero)}</h1>
@@ -467,7 +486,7 @@ function homePage(cols, colByHandle) {
 <ul class="trust">${t.trust.map((x) => `<li><strong>${esc(x[0])}</strong><span>${esc(x[1])}</span></li>`).join("")}</ul>
 <section><h2 class="sec-h">${esc(t.byCat)}</h2>
 <ul class="cats">${show
-    .map((c) => `<li><a href="${u(`/collections/${c.handle}/`)}">${c.image ? `<img src="${esc(img(c.image.url, 500))}" srcset="${esc(srcset(c.image.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 300px" alt="" width="500" height="500" loading="lazy">` : ""}<span>${esc(c.title)}</span></a></li>`)
+    .map((c) => `<li><a href="${u(`/collections/${c.handle}/`)}">${c.image ? `<img src="${esc(img(c.image.url, 500))}" srcset="${esc(srcset(c.image.url, [300, 500, 800]))}" sizes="(max-width:600px) 50vw, 300px" alt="${esc(c.image.altText || c.title)}" width="500" height="500" loading="lazy">` : ""}<span>${esc(c.title)}</span></a></li>`)
     .join("")}</ul></section>
 ${kits.length ? `<section><h2 class="sec-h">${esc(t.kitsH)} <small>${esc(t.save)}</small></h2><ul class="grid">${kits.map((p) => card(p)).join("")}</ul></section>` : ""}
 ${best.length ? `<section><h2 class="sec-h">${esc(t.gear)}</h2><ul class="grid">${best.map((p) => card(p)).join("")}</ul><p class="center"><a class="btn btn-ghost" href="${u(`/collections/${ch("all")}/`)}">${esc(t.viewAll)}</a></p></section>` : ""}
@@ -493,6 +512,17 @@ ${fire.length ? `<section class="fire"><h2 class="sec-h">${esc(t.fireH)} <small>
 function simplePage({ key, path: p, title, heading, bodyHtml, description, noindex }) {
   const body = `<div class="wrap narrow"><h1>${esc(heading)}</h1><div class="rte">${bodyHtml}</div></div>`;
   return { key, path: p, html: layout({ key, title, description, canonical: abs(lp(p)), body, noindex }) };
+}
+
+// Direct-link landing pages (config.directPages): unadvertised sections such as the sellers portal or AN Gafas.
+function directPage(dp, d) {
+  const c = dp[L] || dp.en, path_ = `/pages/${dp.handle}/`;
+  const items = (dp.products || []).map((h) => d.byHandle[h]).filter(Boolean);
+  const body = `<div class="wrap direct direct-${esc(dp.handle)}"${dp.style ? ` style="${esc(dp.style)}"` : ""}>
+${c.eyebrow ? `<p class="eyebrow">${esc(c.eyebrow)}</p>` : ""}<h1>${esc(c.title)}</h1>${c.html ? `<div class="rte">${c.html}</div>` : ""}
+${items.length ? `<ul class="grid">${items.map((p) => card(p)).join("")}</ul>` : ""}${c.footer ? `<p class="muted">${esc(c.footer)}</p>` : ""}</div>`;
+  return { key: "page:" + dp.handle, path: path_, noindex: !!dp.noindex,
+    html: layout({ key: "page:" + dp.handle, title: `${c.title} | ${dp.brand || "Aerial Needs"}`, description: c.description || c.title, canonical: abs(lp(path_)), body, noindex: !!dp.noindex, ogImage: items[0]?.featuredImage?.url }) };
 }
 
 function guidePage(g, d) {
@@ -543,8 +573,8 @@ if(fwd.test(p)&&!sessionStorage.getItem("an404"+p)){sessionStorage.setItem("an40
 
 // ---------- build ----------
 function prepare(data) {
-  // Only list products that live in at least one collection; unlisted / direct-link products
-  // (sellers portal, AN Gafas…) are left to the Shopify fallback and stay out of Google.
+  // Only list products that live in at least one collection; unlisted / direct-link products are built separately (noindex)
+  // (sellers portal, AN Gafas…) get noindex pages so their direct links work but they stay out of Google.
   const products = data.products.filter((p) => p.collections.nodes.length && !cfg.excludeProducts.includes(p.id) && !cfg.excludeProducts.includes(p.handle));
   const byId = Object.fromEntries(products.map((p) => [p.id, p]));
   const cols = data.collections.map((c) => ({ ...c, _products: c.products.nodes.map((n) => byId[n.id]).filter(Boolean) }));
@@ -552,7 +582,8 @@ function prepare(data) {
   // Stable (English) handle → collection, so config/nav can refer to collections by their English handle
   const pages = data.pages.filter((p) => !cfg.excludePages.includes(p.id) && !cfg.excludePages.includes(p.handle));
   const policies = ["refundPolicy", "shippingPolicy", "privacyPolicy", "termsOfService"].map((k) => data.shop[k]).filter((x) => x && x.body);
-  return { products, cols, colById, pages, policies, shop: data.shop };
+  const unlisted = (data.unlisted || []).filter((p) => !byId[p.id]);
+  return { products, unlisted, byHandle: Object.fromEntries([...products, ...unlisted].map((p) => [p.handle, p])), cols, colById, pages, policies, shop: data.shop };
 }
 
 async function main() {
@@ -584,7 +615,8 @@ async function main() {
     const d = D[loc];
     addAlt("home", loc, "/"); addAlt("contact", loc, "/pages/contact/"); addAlt("search", loc, "/search/"); addAlt("guides", loc, "/guides/");
     for (const g of GUIDES) addAlt("guide:" + g.key, loc, `/guides/${g[loc].slug}/`);
-    for (const p of d.products) addAlt(p.id, loc, `/products/${p.handle}/`);
+    for (const p of [...d.products, ...d.unlisted]) addAlt(p.id, loc, `/products/${p.handle}/`);
+    for (const dp of cfg.directPages || []) addAlt("page:" + dp.handle, loc, `/pages/${dp.handle}/`);
     for (const c of d.cols) if (c._products.length) addAlt(c.id, loc, `/collections/${c.handle}/`);
     for (const pg of d.pages) if ((enPageHandle[pg.id] || pg.handle) !== "contact") addAlt(pg.id, loc, `/pages/${pg.handle}/`);
     for (const pol of d.policies) addAlt(enPolicyKey(pol), loc, `/policies/${pol.handle}/`);
@@ -610,6 +642,8 @@ async function main() {
     out.push(homePage(d.cols, d.colByEnHandle));
     for (const c of d.cols) if (c._products.length) out.push(collectionPage(c));
     for (const p of d.products) out.push(productPage(p, d.colById));
+    for (const p of d.unlisted) out.push(productPage(p, d.colById, { noindex: true }));
+    for (const dp of cfg.directPages || []) out.push(directPage(dp, d));
     for (const pg of pages)
       out.push(simplePage({ key: pg.id, path: `/pages/${pg.handle}/`, title: pg.seo?.title || `${pg.title} | Aerial Needs`, heading: pg.title, bodyHtml: cleanHtml(pg.body), description: pg.seo?.description || clip(strip(pg.body), 155) }));
     out.push(contactPage());
@@ -647,7 +681,7 @@ async function main() {
   }
 
   // Sitemap (with hreflang alternates) + robots
-  const indexable = written.filter((o) => !o.file && o.key !== "search");
+  const indexable = written.filter((o) => !o.file && o.key !== "search" && !o.noindex);
   const updated = {};
   for (const loc of LOCALES) for (const x of [...D[loc].products, ...D[loc].cols, ...D[loc].pages]) updated[x.id] = x.updatedAt;
   const xhtml = (key) =>
